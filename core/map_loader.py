@@ -4,7 +4,8 @@ import pygame
 import pytmx
 from pytmx.util_pygame import load_pygame
 
-from core.config.constants import LAYER_PROPERTIES, SCREEN_HEIGHT, SCREEN_WIDTH
+from core.config.constants import LAYER_PROPERTIES
+from core.config.game_settings import settings
 
 
 class MapLayer:
@@ -40,7 +41,7 @@ class TMXMap:
     def __init__(
         self,
         filepath: str | Path,
-        target_size: tuple[int, int] = (SCREEN_WIDTH, SCREEN_HEIGHT),
+        target_size: tuple[int, int] | None = None,
     ) -> None:
         self.tmx_data = load_pygame(str(filepath))
         self.tile_size = (self.tmx_data.tilewidth, self.tmx_data.tileheight)
@@ -49,24 +50,15 @@ class TMXMap:
             self.tmx_data.height * self.tile_size[1],
         )
 
-        self.scale = min(
-            target_size[0] / self.pixel_size[0],
-            target_size[1] / self.pixel_size[1],
-        )
-        self.scaled_size = (
-            int(self.pixel_size[0] * self.scale),
-            int(self.pixel_size[1] * self.scale),
-        )
-        self.offset = (
-            (target_size[0] - self.scaled_size[0]) // 2,
-            (target_size[1] - self.scaled_size[1]) // 2,
-        )
-
         self.layers: dict[str, MapLayer] = {}
         self._parse_layers()
-
         self._surface = self._pre_render()
-        self._scaled_surface = pygame.transform.scale(self._surface, self.scaled_size)
+
+        self.scale = 1.0
+        self.scaled_size = self.pixel_size
+        self.offset = (0, 0)
+        self._scaled_surface = self._surface
+        self.rescale(target_size or settings.screen_size)
 
     def _parse_layers(self) -> None:
         for layer in self.tmx_data.visible_layers:
@@ -83,6 +75,21 @@ class TMXMap:
             for x, y, image in layer.tiles():
                 surface.blit(image, (x * self.tile_size[0], y * self.tile_size[1]))
         return surface
+
+    def rescale(self, target_size: tuple[int, int]) -> None:
+        self.scale = min(
+            target_size[0] / self.pixel_size[0],
+            target_size[1] / self.pixel_size[1],
+        )
+        self.scaled_size = (
+            int(self.pixel_size[0] * self.scale),
+            int(self.pixel_size[1] * self.scale),
+        )
+        self.offset = (
+            (target_size[0] - self.scaled_size[0]) // 2,
+            (target_size[1] - self.scaled_size[1]) // 2,
+        )
+        self._scaled_surface = pygame.transform.scale(self._surface, self.scaled_size)
 
     def _scale_rect(self, rect: pygame.Rect) -> pygame.Rect:
         return pygame.Rect(
@@ -125,5 +132,7 @@ class TMXMap:
                     break
         return result
 
-    def draw(self, surface: pygame.Surface) -> None:
-        surface.blit(self._scaled_surface, self.offset)
+    def draw(self, surface: pygame.Surface, camera_offset: tuple[int, int] = (0, 0)) -> None:
+        x = self.offset[0] - camera_offset[0]
+        y = self.offset[1] - camera_offset[1]
+        surface.blit(self._scaled_surface, (x, y))

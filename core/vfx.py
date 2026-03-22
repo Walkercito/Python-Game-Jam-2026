@@ -23,11 +23,12 @@ class VFXAnimation:
         if self.frame_index >= len(self.frames):
             self.finished = True
 
-    def draw(self, surface: pygame.Surface) -> None:
+    def draw(self, surface: pygame.Surface, camera_offset: tuple[int, int] = (0, 0)) -> None:
         if self.finished:
             return
         frame = self.frames[int(self.frame_index)]
-        rect = frame.get_rect(midbottom=(self.x, self.y))
+        ox, oy = camera_offset
+        rect = frame.get_rect(midbottom=(self.x - ox, self.y - oy))
         surface.blit(frame, rect)
 
 
