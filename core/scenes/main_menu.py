@@ -23,17 +23,29 @@ class MainMenu(Scene):
 
         # Buttons
         self.play_btn = Button(
-            "Play", width=260, height=58, font_size=24, variant="primary",
+            "Play",
+            width=260,
+            height=58,
+            font_size=24,
+            variant="primary",
         )
         self.play_btn.callback = self._on_play
 
         self.settings_btn = Button(
-            "Settings", width=220, height=50, font_size=20, variant="secondary",
+            "Settings",
+            width=220,
+            height=50,
+            font_size=20,
+            variant="secondary",
         )
         self.settings_btn.callback = self._on_settings
 
         self.quit_btn = Button(
-            "Quit", width=220, height=50, font_size=20, variant="secondary",
+            "Quit",
+            width=220,
+            height=50,
+            font_size=20,
+            variant="secondary",
         )
         self.quit_btn.callback = self._on_quit
 

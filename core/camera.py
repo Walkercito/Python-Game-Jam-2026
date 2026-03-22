@@ -133,12 +133,14 @@ class SplitScreen:
         self.cam1.follow_point(
             rect1.centerx + dir_x * shift,
             rect1.centery + dir_y * shift,
-            sw, sh,
+            sw,
+            sh,
         )
         self.cam2.follow_point(
             rect2.centerx - dir_x * shift,
             rect2.centery - dir_y * shift,
-            sw, sh,
+            sw,
+            sh,
         )
         self.cam1.update(dt)
         self.cam2.update(dt)

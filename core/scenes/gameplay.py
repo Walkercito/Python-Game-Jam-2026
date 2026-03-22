@@ -19,8 +19,12 @@ class Gameplay(Scene):
         spawn_x = self.map.offset[0] + self.map.scaled_size[0] // 2
         spawn_y = self.map.offset[1] + self.map.scaled_size[1] // 2
 
-        self.player1 = Player(spawn_x - 40, spawn_y, keys=P1_KEYS, outline_color=(255, 80, 80), character="green")
-        self.player2 = Player(spawn_x + 40, spawn_y, keys=P2_KEYS, outline_color=(80, 130, 255), character="orange")
+        self.player1 = Player(
+            spawn_x - 40, spawn_y, keys=P1_KEYS, outline_color=(255, 80, 80), character="green"
+        )
+        self.player2 = Player(
+            spawn_x + 40, spawn_y, keys=P2_KEYS, outline_color=(80, 130, 255), character="orange"
+        )
         self.players = [self.player1, self.player2]
 
         self._sync_player_scales()
@@ -96,8 +100,6 @@ class Gameplay(Scene):
             vfx.draw(surface, cam_offset)
 
     def draw(self, surface: pygame.Surface) -> None:
-        self.split_screen.render(
-            surface, self._draw_world, self.player1.rect, self.player2.rect
-        )
+        self.split_screen.render(surface, self._draw_world, self.player1.rect, self.player2.rect)
         if self.zone_announcement and not self.zone_announcement.finished:
             self.zone_announcement.draw(surface)

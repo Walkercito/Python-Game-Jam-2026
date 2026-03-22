@@ -63,7 +63,9 @@ class Panel:
     ) -> None:
         if transparent:
             fill_path = GUI_DIR / "Transparent center" / f"panel-transparent-center-{style:03d}.png"
-            border_path = GUI_DIR / "Transparent border" / f"panel-transparent-border-{style:03d}.png"
+            border_path = (
+                GUI_DIR / "Transparent border" / f"panel-transparent-border-{style:03d}.png"
+            )
         else:
             fill_path = GUI_DIR / "Panel" / f"panel-{style:03d}.png"
             border_path = GUI_DIR / "Border" / f"panel-border-{style:03d}.png"
@@ -164,12 +166,18 @@ class Button:
     ) -> None:
         colors = BUTTON_STYLES[variant]
         self.normal = Panel(
-            width, height, style,
-            fill_color=colors["fill"], border_color=colors["border"],
+            width,
+            height,
+            style,
+            fill_color=colors["fill"],
+            border_color=colors["border"],
         )
         self.hovered_panel = Panel(
-            width, height, hover_style,
-            fill_color=colors["hover_fill"], border_color=colors["hover_border"],
+            width,
+            height,
+            hover_style,
+            fill_color=colors["hover_fill"],
+            border_color=colors["hover_border"],
         )
         self.label = Label(text, font_size)
         self.hover_label = Label(text, font_size, color=colors.get("hover_text", (255, 255, 255)))
@@ -183,9 +191,12 @@ class Button:
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.MOUSEMOTION:
             self.hovered = self.rect.collidepoint(event.pos)
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.rect.collidepoint(event.pos):
-                self.callback()
+        elif (
+            event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+            and self.rect.collidepoint(event.pos)
+        ):
+            self.callback()
 
     def draw(self, surface: pygame.Surface) -> None:
         panel = self.hovered_panel if self.hovered else self.normal
@@ -263,10 +274,13 @@ class Toggle:
         self.rect.center = (x, y)
 
     def handle_event(self, event: pygame.event.Event) -> None:
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.rect.collidepoint(event.pos):
-                self.active = not self.active
-                self.on_change(self.active)
+        if (
+            event.type == pygame.MOUSEBUTTONDOWN
+            and event.button == 1
+            and self.rect.collidepoint(event.pos)
+        ):
+            self.active = not self.active
+            self.on_change(self.active)
 
     def draw(self, surface: pygame.Surface) -> None:
         self.panel.draw(surface, self.rect.x, self.rect.y)

@@ -17,7 +17,9 @@ class Pause(Scene):
         self.resume_btn = Button("Resume", width=230, height=54, font_size=22, variant="primary")
         self.resume_btn.callback = self._on_resume
 
-        self.settings_btn = Button("Settings", width=200, height=48, font_size=20, variant="secondary")
+        self.settings_btn = Button(
+            "Settings", width=200, height=48, font_size=20, variant="secondary"
+        )
         self.settings_btn.callback = self._on_settings
 
         self.quit_btn = Button("Quit to Menu", width=200, height=48, font_size=18, variant="danger")

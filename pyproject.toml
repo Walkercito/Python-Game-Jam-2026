@@ -1,9 +1,20 @@
 [project]
 name = "python-game-jam-2026"
 version = "0.1.0"
-description = "Add your description here"
+description = "Co-op platformer with dynamic split-screen, built with pygame-ce for Python Game Jam 2026"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "MIT"
+authors = [
+    { name = "Walkercito" },
+]
+keywords = ["game", "pygame", "platformer", "co-op", "game-jam"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Topic :: Games/Entertainment :: Side-Scrolling/Arcade Games",
+    "Programming Language :: Python :: 3.12",
+]
 dependencies = [
     "pillow>=11.0",
     "pygame-ce>=2.5.7",
@@ -12,6 +23,39 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.0",
     "ruff>=0.15.7",
     "ty>=0.0.24",
 ]
+
+[project.scripts]
+game = "main:main"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "RUF",   # ruff-specific
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument (common in pygame)
+    "SIM108", # ternary operator (readability preference)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

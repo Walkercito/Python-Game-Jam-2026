@@ -19,8 +19,13 @@ from core.config.constants import (
 )
 
 KEY_MAP = {
-    "a": pygame.K_a, "d": pygame.K_d, "w": pygame.K_w, "s": pygame.K_s,
-    "[1]": pygame.K_KP_1, "[2]": pygame.K_KP_2, "[3]": pygame.K_KP_3,
+    "a": pygame.K_a,
+    "d": pygame.K_d,
+    "w": pygame.K_w,
+    "s": pygame.K_s,
+    "[1]": pygame.K_KP_1,
+    "[2]": pygame.K_KP_2,
+    "[3]": pygame.K_KP_3,
     "[5]": pygame.K_KP_5,
 }
 
@@ -67,7 +72,7 @@ def _build_animations(
     outline_color: tuple[int, int, int] = OUTLINE_COLOR,
 ) -> dict[str, list[pygame.Surface]]:
     names = [sprite_dir / f"{prefix}_{key}.png" for key in ANIM_KEYS]
-    raw = {key: _load_spritesheet(path, scale) for key, path in zip(ANIM_KEYS, names)}
+    raw = {key: _load_spritesheet(path, scale) for key, path in zip(ANIM_KEYS, names, strict=True)}
     return {key: [_add_outline(f, outline_color) for f in frames] for key, frames in raw.items()}
 
 
@@ -94,7 +99,9 @@ class Player:
         self.sprite_dir = Path(f"assets/characters/{character}")
         self.sprite_prefix = character
         self.current_scale = PLAYER_SCALE
-        self.animations = _build_animations(self.sprite_dir, self.sprite_prefix, PLAYER_SCALE, outline_color)
+        self.animations = _build_animations(
+            self.sprite_dir, self.sprite_prefix, PLAYER_SCALE, outline_color
+        )
 
         self.state = "idle"
         self.pos = pygame.math.Vector2(x, y)
@@ -120,7 +127,9 @@ class Player:
 
     def rescale(self, new_scale: float) -> None:
         self.current_scale = new_scale
-        self.animations = _build_animations(self.sprite_dir, self.sprite_prefix, new_scale, self.outline_color)
+        self.animations = _build_animations(
+            self.sprite_dir, self.sprite_prefix, new_scale, self.outline_color
+        )
         self.image = self.animations[self.state][int(self.frame_index)]
         old_center = self.rect.center
         self.rect = self.image.get_rect(center=old_center)

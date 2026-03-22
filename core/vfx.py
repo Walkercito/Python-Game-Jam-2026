@@ -32,9 +32,7 @@ class VFXAnimation:
         surface.blit(frame, rect)
 
 
-def load_vfx_frames(
-    folder: str | Path, scale: float = 1.0
-) -> list[pygame.Surface]:
+def load_vfx_frames(folder: str | Path, scale: float = 1.0) -> list[pygame.Surface]:
     folder = Path(folder)
     paths = sorted(folder.glob("*.png"))
     frames: list[pygame.Surface] = []
