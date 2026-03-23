@@ -344,6 +344,11 @@ class TextInput:
                 self.text = self.text[:-1]
             elif event.key in (pygame.K_RETURN, pygame.K_TAB):
                 self.active = False
+            elif event.key == pygame.K_v and (event.mod & pygame.KMOD_CTRL):
+                paste = pygame.scrap.get_text() or ""
+                if paste:
+                    remaining = self.max_length - len(self.text)
+                    self.text += paste[:remaining]
             elif len(self.text) < self.max_length and event.unicode.isprintable() and event.unicode:
                 self.text += event.unicode
 

@@ -1,9 +1,12 @@
 import json
 import random
+import shutil
 import socket
 import string
+import subprocess
 import threading
 import time
+import urllib.request
 
 from repod import Channel, ConnectionListener, Server
 
@@ -135,6 +138,19 @@ class GameServer(Server[GameChannel]):
         super().__init__(host, port)
         self.players: list[GameChannel] = []
         self.game_started = False
+        self._loop = None
+        self._thread = None
+
+    def start_background(self) -> threading.Thread:
+        self._thread = super().start_background()
+        return self._thread
+
+    def stop_sync(self) -> None:
+        """Stop the server synchronously from the main thread."""
+        if hasattr(self, "_tcp_server") and self._tcp_server:
+            loop = self._tcp_server.get_loop()
+            loop.call_soon_threadsafe(self._tcp_server.close)
+            time.sleep(0.2)
 
     def on_connect(self, channel: GameChannel, addr: tuple[str, int]) -> None:
         pass
@@ -172,6 +188,66 @@ class GameServer(Server[GameChannel]):
 
     def on_disconnect(self, channel: GameChannel) -> None:
         self.on_player_leave(channel)
+
+
+class NgrokTunnel:
+    """Manages an ngrok TCP tunnel for internet play."""
+
+    def __init__(self, port: int = DEFAULT_PORT) -> None:
+        self.port = port
+        self.public_url: str | None = None
+        self.error: str | None = None
+        self.ready = False
+        self._process: subprocess.Popen | None = None
+
+    @staticmethod
+    def is_available() -> bool:
+        return shutil.which("ngrok") is not None
+
+    def start(self) -> None:
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self) -> None:
+        try:
+            self._process = subprocess.Popen(
+                ["ngrok", "tcp", str(self.port)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            # Wait for ngrok to start and poll for URL
+            for _ in range(30):
+                time.sleep(0.5)
+                url = self._get_url()
+                if url:
+                    self.public_url = url
+                    self.ready = True
+                    return
+            self.error = "ngrok started but no tunnel URL found"
+        except FileNotFoundError:
+            self.error = "ngrok not installed"
+        except Exception as e:
+            self.error = str(e)
+
+    def _get_url(self) -> str | None:
+        try:
+            resp = urllib.request.urlopen("http://127.0.0.1:4040/api/tunnels", timeout=2)
+            data = json.loads(resp.read())
+            for tunnel in data.get("tunnels", []):
+                if tunnel.get("proto") == "tcp":
+                    return tunnel["public_url"].replace("tcp://", "")
+        except Exception:
+            return None
+
+    def stop(self) -> None:
+        if self._process:
+            self._process.terminate()
+            try:
+                self._process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+            self._process = None
+        self.ready = False
+        self.public_url = None
 
 
 class GameClient(ConnectionListener):

@@ -53,11 +53,25 @@ class Engine:
                 )
                 self.screen.blit(fps_text, (8, 8))
 
-            # Custom cursor — drawn last, always on top
-            mx, my = pygame.mouse.get_pos()
-            self.screen.blit(self._cursor, (mx, my))
+            # Custom cursor — only in menus/UI, hidden during gameplay
+            from core.scenes.base_gameplay import BaseGameplay
+
+            top = self.scene_manager.current
+            in_gameplay = isinstance(top, BaseGameplay)
+            if not in_gameplay:
+                mx, my = pygame.mouse.get_pos()
+                self.screen.blit(self._cursor, (mx, my))
 
             pygame.display.flip()
             self.clock.tick(FPS)
+
+        # Cleanup any running servers/tunnels in the scene stack
+        for scene in self.scene_manager.stack:
+            if hasattr(scene, "tunnel") and scene.tunnel:
+                scene.tunnel.stop()
+            if hasattr(scene, "server") and scene.server:
+                scene.server.stop_sync()
+            if hasattr(scene, "broadcaster") and scene.broadcaster:
+                scene.broadcaster.stop()
 
         pygame.quit()
