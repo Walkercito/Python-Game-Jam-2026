@@ -9,6 +9,13 @@ LAYER_PROPERTIES: dict[str, dict] = {
     "Water": {"water": True, "speed_modifier": 0.4, "gravity_modifier": 0.3, "jump_modifier": 0.6},
 }
 
+# Lava
+LAVA_DEATH_TIME = 2.0
+
+# Fall damage
+FALL_DEATH_AIRTIME = 1.2  # seconds of continuous falling before lethal
+DEATH_ANIM_DURATION = 1.5
+
 # Player physics
 PLAYER_SCALE = 6.0
 PLAYER_ACCELERATION = 2200.0

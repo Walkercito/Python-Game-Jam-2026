@@ -12,29 +12,47 @@
             "scaleInDock": 3,
             "scaleInEditor": 5.5
         },
+        "1bitplatformer.tsx": {
+            "scaleInDock": 3,
+            "scaleInEditor": 1
+        },
+        "pressure_plate.tsx": {
+            "scaleInDock": 8,
+            "scaleInEditor": 45
+        },
         "tutorial_001.tmx": {
-            "scale": 4,
-            "selectedLayer": 1,
+            "scale": 3,
+            "selectedLayer": 5,
             "viewCenter": {
-                "x": 138.625,
-                "y": 87.125
+                "x": 154.66666666666666,
+                "y": 92.5
             }
         }
     },
     "last.exportedFilePath": "/home/walkercito/Hobbies/Python-Game-Jam-2026/assets/tiled",
-    "map.height": 22,
+    "last.imagePath": "/home/walkercito/Hobbies/Python-Game-Jam-2026/assets/adve",
+    "map.height": 32,
     "map.lastUsedExportFilter": "Archivos de mapas de Tiled (*.tmx *.xml)",
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 8,
     "map.tileWidth": 8,
-    "map.width": 40,
+    "map.width": 60,
     "openFiles": [
         "/home/walkercito/Hobbies/Python-Game-Jam-2026/assets/adve/tiles.tsx",
-        "tutorial_001.tmx"
+        "tutorial_001.tmx",
+        "1bitplatformer.tsx",
+        "pressure_plate.tsx"
     ],
     "project": "adve.tiled-project",
     "recentFiles": [
         "/home/walkercito/Hobbies/Python-Game-Jam-2026/assets/adve/tiles.tsx",
+        "1bitplatformer.tsx",
+        "pressure_plate.tsx",
         "tutorial_001.tmx"
-    ]
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 8,
+        "width": 8
+    }
 }
