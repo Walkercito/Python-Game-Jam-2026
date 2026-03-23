@@ -78,9 +78,27 @@ class HostLobby(Scene):
         self.client.join("127.0.0.1", DEFAULT_PORT, name)
 
         self.hosting = True
-        self.code_label.set_text(self.party_code)
+        display_code = f"{self.party_code[:3]}-{self.party_code[3:]}"
+        self.code_label.set_text(display_code)
         self.status_label.set_text("Waiting for player...")
-        self.widgets = [self.start_btn, self.back_btn]
+
+        self.copy_btn = Button("Copy Code", width=200, height=50, font_size=20, variant="secondary")
+        self.copy_btn.set_position(self.start_btn.rect.centerx, self.start_btn.rect.centery - 70)
+        self.copy_btn.callback = self._on_copy
+        self.widgets = [self.copy_btn, self.start_btn, self.back_btn]
+
+    def _on_copy(self) -> None:
+        try:
+            import subprocess
+
+            subprocess.run(
+                ["xclip", "-selection", "clipboard"],
+                input=self.party_code.encode(),
+                check=False,
+            )
+        except FileNotFoundError:
+            pygame.scrap.init()
+            pygame.scrap.put(pygame.SCRAP_TEXT, self.party_code.encode())
 
     def _on_start(self) -> None:
         if self.client and self.client.has_remote_player:
@@ -138,6 +156,8 @@ class HostLobby(Scene):
                 self.players_label.set_text(" & ".join(names))
                 self.players_label.draw(surface, cx, cy + 20)
 
+            self.copy_btn.draw(surface)
+
             if self.client and self.client.has_remote_player:
                 self.status_label.set_text("Ready!")
                 self.status_label.draw(surface, cx, cy + 60)
@@ -163,7 +183,7 @@ class JoinLobby(Scene):
 
         self.code_label = Label("Party Code", size=24)
         self.code_input = TextInput(
-            width=320, height=54, placeholder="ABC123", max_length=6, font_size=22
+            width=320, height=54, placeholder="ABC-123", max_length=7, font_size=22
         )
 
         self.status_label = Label("", size=22, color=(180, 175, 160))
@@ -197,7 +217,7 @@ class JoinLobby(Scene):
 
     def _on_find(self) -> None:
         self.player_name = self.name_input.text.strip() or "Player"
-        code = self.code_input.text.strip().upper()
+        code = self.code_input.text.strip().upper().replace("-", "")
         if len(code) != 6:
             self.status_label.set_text("Code must be 6 characters")
             return

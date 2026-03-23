@@ -70,9 +70,9 @@ class MainMenu(Scene):
         self._layout(width, height)
 
     def _on_local(self) -> None:
-        from core.scenes.gameplay import Gameplay
+        from core.scenes.name_input import LocalNameInput
 
-        self.manager.replace(Gameplay(self.manager))
+        self.manager.push(LocalNameInput(self.manager))
 
     def _on_host(self) -> None:
         from core.scenes.lobby import HostLobby
