@@ -12,7 +12,7 @@ LEVELS: dict[str, dict] = {
     "level_001": {
         "map": "assets/tiled/level_001.tmx",
         "zone_subtitle": "Zone Two",
-        "zone_title": "The Descent",
+        "zone_title": "The Farlands",
         "signs": {
             0: "Careful with the lava!",
             1: "Climb the stairs together",

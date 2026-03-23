@@ -4,7 +4,11 @@ import pygame
 
 from core.config.constants import (
     DEATH_ANIM_DURATION,
+    DEATH_ANIM_SPEED_MOD,
     FALL_DEATH_AIRTIME,
+    NAMETAG_COLOR,
+    NAMETAG_OFFSET_Y,
+    NAMETAG_SIZE,
     P1_KEYS,
     PLAYER_ACCELERATION,
     PLAYER_ANIMATION_SPEED,
@@ -14,11 +18,24 @@ from core.config.constants import (
     PLAYER_JUMP_FORCE,
     PLAYER_MAX_SPEED,
     PLAYER_SCALE,
+    SPRITE_FRAME_COUNT,
+    SPRITE_FRAME_SIZE,
     SQUASH_DURATION,
     SQUASH_FACTOR,
+    STAIRS_CLIMB_SPEED,
+    STAIRS_DESCEND_SPEED,
+    STAIRS_FRICTION,
+    STAIRS_JUMP_MOD,
     STRETCH_DURATION,
     STRETCH_FACTOR,
+    VELOCITY_DEAD_ZONE,
+    WATER_ANIM_MOD,
+    WATER_GRAVITY_MOD,
+    WATER_JUMP_MOD,
+    WATER_MAX_FALL_MOD,
+    WATER_SPEED_MOD,
 )
+from core.utils import lerp, load_spritesheet
 
 KEY_MAP = {
     "a": pygame.K_a,
@@ -31,20 +48,8 @@ KEY_MAP = {
     "[5]": pygame.K_KP_5,
 }
 
-FRAME_SIZE = (8, 8)
-FRAME_COUNT = 5
 OUTLINE_COLOR = (255, 255, 255)
-
-
-def _load_spritesheet(filepath: Path, scale: float) -> list[pygame.Surface]:
-    sheet = pygame.image.load(filepath).convert_alpha()
-    frames: list[pygame.Surface] = []
-    w, h = FRAME_SIZE
-    scaled = (int(w * scale), int(h * scale))
-    for i in range(FRAME_COUNT):
-        frame = sheet.subsurface(pygame.Rect(i * w, 0, w, h))
-        frames.append(pygame.transform.scale(frame, scaled))
-    return frames
+ANIM_KEYS = ["idle", "walk", "jump", "die"]
 
 
 def _add_outline(
@@ -64,25 +69,22 @@ def _add_outline(
     return outlined
 
 
-ANIM_KEYS = ["idle", "walk", "jump", "die"]
-
-
 def _build_animations(
     sprite_dir: Path,
     prefix: str,
     scale: float,
     outline_color: tuple[int, int, int] = OUTLINE_COLOR,
 ) -> dict[str, list[pygame.Surface]]:
-    names = [sprite_dir / f"{prefix}_{key}.png" for key in ANIM_KEYS]
-    raw = {key: _load_spritesheet(path, scale) for key, path in zip(ANIM_KEYS, names, strict=True)}
+    raw = {}
+    for key in ANIM_KEYS:
+        path = sprite_dir / f"{prefix}_{key}.png"
+        raw[key] = load_spritesheet(path, SPRITE_FRAME_SIZE, SPRITE_FRAME_COUNT, scale)
     return {key: [_add_outline(f, outline_color) for f in frames] for key, frames in raw.items()}
 
 
-def _lerp(a: float, b: float, t: float) -> float:
-    return a + (b - a) * min(t, 1.0)
-
-
 class Player:
+    _nametag_font: pygame.font.Font | None = None
+
     def __init__(
         self,
         x: float,
@@ -129,7 +131,6 @@ class Player:
         self.image = self.animations[self.state][0]
         self.rect = self.image.get_rect(topleft=(int(x), int(y)))
 
-        # Squash & stretch
         self.scale_x = 1.0
         self.scale_y = 1.0
         self._squash_timer = 0.0
@@ -146,6 +147,19 @@ class Player:
         self.pos.x = float(self.rect.x)
         self.pos.y = float(self.rect.y)
 
+    def respawn(self, x: float, y: float) -> None:
+        self.dead = False
+        self._death_timer = 0.0
+        self._airtime = 0.0
+        self.pos.x = x
+        self.pos.y = y
+        self.rect.x = int(x)
+        self.rect.y = int(y)
+        self.velocity.x = 0
+        self.velocity.y = 0
+        self.state = "idle"
+        self.frame_index = 0.0
+
     def handle_input(self) -> None:
         keys = pygame.key.get_pressed()
         self.acceleration.x = 0
@@ -159,9 +173,9 @@ class Player:
 
         if keys[self.key_jump]:
             if self.in_water:
-                self.velocity.y = PLAYER_JUMP_FORCE * 0.6
+                self.velocity.y = PLAYER_JUMP_FORCE * WATER_JUMP_MOD
             elif self.on_stairs:
-                self.velocity.y = PLAYER_JUMP_FORCE * 0.8
+                self.velocity.y = PLAYER_JUMP_FORCE * STAIRS_JUMP_MOD
                 self.on_stairs = False
             elif self.on_ground:
                 self.velocity.y = PLAYER_JUMP_FORCE
@@ -201,21 +215,21 @@ class Player:
         self.in_water = any(self.rect.colliderect(w) for w in water_rects)
         self.in_lava = any(self.rect.colliderect(lv) for lv in (lava_rects or []))
         self.on_stairs = any(self.rect.colliderect(s) for s in (stairs_rects or []))
-        speed_mod = 0.4 if self.in_water else 1.0
-        gravity_mod = 0.3 if self.in_water else 1.0
+        speed_mod = WATER_SPEED_MOD if self.in_water else 1.0
+        gravity_mod = WATER_GRAVITY_MOD if self.in_water else 1.0
 
         self.handle_input()
 
-        # Stairs: climb up/down with jump/down keys, reduced gravity
+        # Stairs
         if self.on_stairs:
             keys = pygame.key.get_pressed()
             if keys[self.key_jump]:
-                self.velocity.y = -PLAYER_MAX_SPEED * 0.5
+                self.velocity.y = -PLAYER_MAX_SPEED * STAIRS_CLIMB_SPEED
             elif keys[self.key_down]:
-                self.velocity.y = PLAYER_MAX_SPEED * 0.4
+                self.velocity.y = PLAYER_MAX_SPEED * STAIRS_DESCEND_SPEED
             else:
-                self.velocity.y *= 0.85  # friction on stairs
-            gravity_mod = 0.0  # no gravity while on stairs
+                self.velocity.y *= STAIRS_FRICTION
+            gravity_mod = 0.0
 
         # Horizontal
         self.velocity.x += self.acceleration.x * speed_mod * dt
@@ -225,32 +239,32 @@ class Player:
         if abs(self.velocity.x) > max_speed:
             self.velocity.x = max_speed if self.velocity.x > 0 else -max_speed
 
-        if abs(self.velocity.x) < 1.0:
+        if abs(self.velocity.x) < VELOCITY_DEAD_ZONE:
             self.velocity.x = 0
 
         self.pos.x += self.velocity.x * dt
         self.rect.x = int(self.pos.x)
         self._collide_x(collision_rects)
 
+        # Track airtime before collision
+        if self.velocity.y > 0 and self.velocity.y > 0:
+            self._airtime += dt if not self.on_ground else 0
+        elif self.velocity.y < 0:
+            self._airtime = 0.0
+
         # Vertical
         self.velocity.y += PLAYER_GRAVITY * gravity_mod * dt
 
         if self.in_water:
-            max_fall = PLAYER_MAX_SPEED * 0.5
+            max_fall = PLAYER_MAX_SPEED * WATER_MAX_FALL_MOD
             if self.velocity.y > max_fall:
                 self.velocity.y = max_fall
-
-        # Track airtime for fall damage
-        if not self.on_ground and self.velocity.y > 0:
-            self._airtime += dt
-        else:
-            self._airtime = 0.0
 
         self.pos.y += self.velocity.y * dt
         self.rect.y = int(self.pos.y)
         self._collide_y(collision_rects)
 
-        # One-way platforms (Terraria-style): collide only from above, drop-through with down
+        # One-way platforms
         if not self.dropping_through:
             self._collide_platforms(platform_rects or [])
             self._collide_platforms(breakable_rects or [])
@@ -260,11 +274,16 @@ class Player:
             self._check_ground(platform_rects or [])
             self._check_ground(breakable_rects or [])
 
+        # Track airtime for fall damage
+        if not self.on_ground and self.velocity.y > 0:
+            self._airtime += dt
+        else:
+            self._airtime = 0.0
+
         self.just_landed = self.on_ground and self.was_airborne
         self.was_airborne = not self.on_ground
 
         if self.just_landed:
-            # Fall damage check — only lethal after sustained falling
             if self._airtime >= FALL_DEATH_AIRTIME and not self.in_water:
                 self.dead = True
                 self._death_timer = 0.0
@@ -277,16 +296,28 @@ class Player:
         self._update_squash_stretch(dt)
         self._animate(dt)
 
+    def _animate_death(self, dt: float) -> None:
+        frames = self.animations["die"]
+        self.frame_index += dt / (PLAYER_ANIMATION_SPEED * DEATH_ANIM_SPEED_MOD)
+        if self.frame_index >= len(frames):
+            self.frame_index = len(frames) - 1
+        frame = frames[int(self.frame_index)]
+        self.image = pygame.transform.flip(frame, True, False) if not self.facing_right else frame
+
+    @property
+    def death_complete(self) -> bool:
+        return self.dead and self._death_timer >= DEATH_ANIM_DURATION
+
     def _update_squash_stretch(self, dt: float) -> None:
         if self._squash_timer > 0:
             t = 1.0 - (self._squash_timer / SQUASH_DURATION)
-            self.scale_x = _lerp(STRETCH_FACTOR, 1.0, t)
-            self.scale_y = _lerp(SQUASH_FACTOR, 1.0, t)
+            self.scale_x = lerp(STRETCH_FACTOR, 1.0, t)
+            self.scale_y = lerp(SQUASH_FACTOR, 1.0, t)
             self._squash_timer -= dt
         elif self._stretch_timer > 0:
             t = 1.0 - (self._stretch_timer / STRETCH_DURATION)
-            self.scale_x = _lerp(SQUASH_FACTOR, 1.0, t)
-            self.scale_y = _lerp(STRETCH_FACTOR, 1.0, t)
+            self.scale_x = lerp(SQUASH_FACTOR, 1.0, t)
+            self.scale_y = lerp(STRETCH_FACTOR, 1.0, t)
             self._stretch_timer -= dt
         else:
             self.scale_x = 1.0
@@ -319,7 +350,6 @@ class Player:
         for plat in rects:
             if not self.rect.colliderect(plat):
                 continue
-            # Only collide from above: player's feet were above the platform top
             if self.velocity.y > 0 and self.rect.bottom <= plat.top + self.velocity.y * 0.05 + 4:
                 self.rect.bottom = plat.top
                 self.on_ground = True
@@ -336,31 +366,6 @@ class Player:
                 self.on_ground = True
                 return
 
-    def _animate_death(self, dt: float) -> None:
-        frames = self.animations["die"]
-        self.frame_index += dt / (PLAYER_ANIMATION_SPEED * 2)  # slower death anim
-        if self.frame_index >= len(frames):
-            self.frame_index = len(frames) - 1  # hold last frame
-        frame = frames[int(self.frame_index)]
-        self.image = pygame.transform.flip(frame, True, False) if not self.facing_right else frame
-
-    @property
-    def death_complete(self) -> bool:
-        return self.dead and self._death_timer >= DEATH_ANIM_DURATION
-
-    def respawn(self, x: float, y: float) -> None:
-        self.dead = False
-        self._death_timer = 0.0
-        self._airtime = 0.0
-        self.pos.x = x
-        self.pos.y = y
-        self.rect.x = int(x)
-        self.rect.y = int(y)
-        self.velocity.x = 0
-        self.velocity.y = 0
-        self.state = "idle"
-        self.frame_index = 0.0
-
     def _near_apex(self) -> bool:
         threshold = abs(PLAYER_JUMP_FORCE) * 0.2
         return abs(self.velocity.y) <= threshold
@@ -368,7 +373,7 @@ class Player:
     def _get_state(self) -> str:
         if not self.on_ground:
             return "jump"
-        if abs(self.velocity.x) > 1.0:
+        if abs(self.velocity.x) > VELOCITY_DEAD_ZONE:
             return "walk"
         return "idle"
 
@@ -380,7 +385,7 @@ class Player:
 
         anim_speed = PLAYER_ANIMATION_SPEED
         if self.in_water:
-            anim_speed *= 2.5
+            anim_speed *= WATER_ANIM_MOD
 
         frames = self.animations[self.state]
         self.frame_index += dt / anim_speed
@@ -411,14 +416,14 @@ class Player:
         if show_nametag and self.name:
             self._draw_nametag(surface, ox, oy)
 
-    _nametag_font: pygame.font.Font | None = None
-
     def _draw_nametag(self, surface: pygame.Surface, ox: int, oy: int) -> None:
         if Player._nametag_font is None:
             from core.gui import FONT_PATH
 
-            Player._nametag_font = pygame.font.Font(FONT_PATH, 24)
+            Player._nametag_font = pygame.font.Font(FONT_PATH, NAMETAG_SIZE)
 
-        tag = Player._nametag_font.render(self.name, True, (255, 255, 255))
-        tag_rect = tag.get_rect(midbottom=(self.rect.centerx - ox, self.rect.top - 6 - oy))
+        tag = Player._nametag_font.render(self.name, True, NAMETAG_COLOR)
+        tag_rect = tag.get_rect(
+            midbottom=(self.rect.centerx - ox, self.rect.top - NAMETAG_OFFSET_Y - oy)
+        )
         surface.blit(tag, tag_rect)

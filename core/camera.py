@@ -5,10 +5,7 @@ import pygame
 
 from core.config.constants import SPLIT_MERGE_THRESHOLD, SPLIT_THRESHOLD
 from core.config.game_settings import settings
-
-
-def _lerp(a: float, b: float, t: float) -> float:
-    return a + (b - a) * min(max(t, 0.0), 1.0)
+from core.utils import lerp
 
 
 class Camera:
@@ -100,7 +97,7 @@ class SplitScreen:
             self._target_split = 0.0
 
         # Smooth transition
-        self.split_amount = _lerp(
+        self.split_amount = lerp(
             self.split_amount,
             self._target_split,
             self.TRANSITION_SPEED * dt,
@@ -170,15 +167,15 @@ class SplitScreen:
 
     def _blended_offset(self, cam: Camera) -> tuple[int, int]:
         t = self.split_amount
-        ox = _lerp(self.shared_cam.pos.x, cam.pos.x, t)
-        oy = _lerp(self.shared_cam.pos.y, cam.pos.y, t)
+        ox = lerp(self.shared_cam.pos.x, cam.pos.x, t)
+        oy = lerp(self.shared_cam.pos.y, cam.pos.y, t)
 
         sx = self.shared_cam._shake_offset.x
         sy = self.shared_cam._shake_offset.y
         cx = cam._shake_offset.x
         cy = cam._shake_offset.y
 
-        return (int(ox + _lerp(sx, cx, t)), int(oy + _lerp(sy, cy, t)))
+        return (int(ox + lerp(sx, cx, t)), int(oy + lerp(sy, cy, t)))
 
     def _build_half_polygon(
         self,

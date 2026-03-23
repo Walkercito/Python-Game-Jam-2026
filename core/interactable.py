@@ -2,13 +2,26 @@ from pathlib import Path
 
 import pygame
 
+from core.config.constants import (
+    BREAKABLE_SHAKE_MULTIPLIER,
+    BREAKABLE_TIMER,
+    INTERACT_RADIUS,
+    PRESSURE_FPS,
+    SIGN_DIALOG_BORDER,
+    SIGN_DIALOG_FADE_SPEED,
+    SIGN_DIALOG_FILL,
+    SIGN_DIALOG_FONT_SIZE,
+    SIGN_DIALOG_MIN_WIDTH,
+    SIGN_DIALOG_PADDING,
+    SIGN_DIALOG_STYLE,
+    SIGN_DIALOG_Y_RATIO,
+)
 from core.gui import Label, Panel
+from core.utils import load_spritesheet
 
-INTERACT_RADIUS = 60
 PRESSURE_PLATE_PATH = Path("assets/adve/pressure_plate.png")
 PRESSURE_FRAME_SIZE = (8, 8)
 PRESSURE_FRAME_COUNT = 3
-PRESSURE_FPS = 6
 
 
 class Sign:
@@ -41,8 +54,6 @@ class SignManager:
 
 
 class SignDialog:
-    FADE_SPEED = 6.0
-
     def __init__(self) -> None:
         self.current_text = ""
         self.alpha = 0.0
@@ -51,11 +62,11 @@ class SignDialog:
         self.panel = Panel(
             400,
             80,
-            style=6,
-            fill_color=(20, 15, 30),
-            border_color=(120, 115, 100),
+            style=SIGN_DIALOG_STYLE,
+            fill_color=SIGN_DIALOG_FILL,
+            border_color=SIGN_DIALOG_BORDER,
         )
-        self.label = Label("", size=20)
+        self.label = Label("", size=SIGN_DIALOG_FONT_SIZE)
 
     def show(self, text: str) -> None:
         if text != self.current_text:
@@ -63,13 +74,13 @@ class SignDialog:
             self.label.set_text(text)
 
             text_w = self.label.rect.width
-            panel_w = max(text_w + 100, 300)
+            panel_w = max(text_w + SIGN_DIALOG_PADDING, SIGN_DIALOG_MIN_WIDTH)
             self.panel = Panel(
                 panel_w,
                 80,
-                style=6,
-                fill_color=(20, 15, 30),
-                border_color=(120, 115, 100),
+                style=SIGN_DIALOG_STYLE,
+                fill_color=SIGN_DIALOG_FILL,
+                border_color=SIGN_DIALOG_BORDER,
             )
         self.visible = True
 
@@ -79,13 +90,13 @@ class SignDialog:
     def update(self, dt: float) -> None:
         target = 1.0 if self.visible else 0.0
         if self.alpha < target:
-            self.alpha = min(self.alpha + self.FADE_SPEED * dt, 1.0)
+            self.alpha = min(self.alpha + SIGN_DIALOG_FADE_SPEED * dt, 1.0)
         elif self.alpha > target:
-            self.alpha = max(self.alpha - self.FADE_SPEED * dt, 0.0)
+            self.alpha = max(self.alpha - SIGN_DIALOG_FADE_SPEED * dt, 0.0)
 
     def draw(self, surface: pygame.Surface) -> None:
         sw, sh = surface.get_size()
-        self.draw_at(surface, sw // 2, int(sh * 0.78))
+        self.draw_at(surface, sw // 2, int(sh * SIGN_DIALOG_Y_RATIO))
 
     def draw_at(self, surface: pygame.Surface, cx: int, y: int) -> None:
         if self.alpha <= 0.01:
@@ -104,14 +115,7 @@ class SignDialog:
 
 
 def _load_pressure_frames(scale: float) -> list[pygame.Surface]:
-    sheet = pygame.image.load(PRESSURE_PLATE_PATH).convert_alpha()
-    frames: list[pygame.Surface] = []
-    w, h = PRESSURE_FRAME_SIZE
-    scaled = (int(w * scale), int(h * scale))
-    for i in range(PRESSURE_FRAME_COUNT):
-        frame = sheet.subsurface(pygame.Rect(i * w, 0, w, h))
-        frames.append(pygame.transform.scale(frame, scaled))
-    return frames
+    return load_spritesheet(PRESSURE_PLATE_PATH, PRESSURE_FRAME_SIZE, PRESSURE_FRAME_COUNT, scale)
 
 
 class PressurePlate:
@@ -147,9 +151,6 @@ class PressurePlate:
         surface.blit(frame, pos)
 
 
-BREAKABLE_TIMER = 0.5  # seconds before breaking
-
-
 class BreakablePlatform:
     def __init__(self, rect: pygame.Rect, image: pygame.Surface) -> None:
         self.rect = rect
@@ -161,7 +162,7 @@ class BreakablePlatform:
     @property
     def shake_amount(self) -> float:
         if self.triggered and not self.broken:
-            return min(self.timer / BREAKABLE_TIMER, 1.0) * 3.0
+            return min(self.timer / BREAKABLE_TIMER, 1.0) * BREAKABLE_SHAKE_MULTIPLIER
         return 0.0
 
     def update(self, dt: float, *player_rects: pygame.Rect) -> None:

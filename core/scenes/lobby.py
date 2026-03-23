@@ -82,23 +82,24 @@ class HostLobby(Scene):
         self.code_label.set_text(display_code)
         self.status_label.set_text("Waiting for player...")
 
-        self.copy_btn = Button("Copy Code", width=200, height=50, font_size=20, variant="secondary")
-        self.copy_btn.set_position(self.start_btn.rect.centerx, self.start_btn.rect.centery - 70)
+        self.copy_btn = Button("Copy Code", width=200, height=50, font_size=18, variant="secondary")
         self.copy_btn.callback = self._on_copy
+        self.copied_label = Label("", size=16, color=(120, 200, 120))
         self.widgets = [self.copy_btn, self.start_btn, self.back_btn]
 
     def _on_copy(self) -> None:
-        try:
-            import subprocess
+        import subprocess
 
-            subprocess.run(
-                ["xclip", "-selection", "clipboard"],
-                input=self.party_code.encode(),
-                check=False,
-            )
-        except FileNotFoundError:
-            pygame.scrap.init()
-            pygame.scrap.put(pygame.SCRAP_TEXT, self.party_code.encode())
+        code = self.party_code
+        try:
+            subprocess.run(["xclip", "-selection", "clipboard"], input=code.encode(), check=True)
+            self.copied_label.set_text("Copied!")
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            try:
+                subprocess.run(["xsel", "--clipboard", "--input"], input=code.encode(), check=True)
+                self.copied_label.set_text("Copied!")
+            except (FileNotFoundError, subprocess.CalledProcessError):
+                self.copied_label.set_text("Copy failed")
 
     def _on_start(self) -> None:
         if self.client and self.client.has_remote_player:
@@ -156,7 +157,9 @@ class HostLobby(Scene):
                 self.players_label.set_text(" & ".join(names))
                 self.players_label.draw(surface, cx, cy + 20)
 
+            self.copy_btn.set_position(cx, cy + 10)
             self.copy_btn.draw(surface)
+            self.copied_label.draw(surface, cx, cy + 50)
 
             if self.client and self.client.has_remote_player:
                 self.status_label.set_text("Ready!")
