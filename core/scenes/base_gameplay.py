@@ -32,6 +32,7 @@ from core.interactable import BreakableManager, PressurePlateManager, SignDialog
 from core.map_loader import TMXMap
 from core.player import Player
 from core.portal import Portal
+from core.resource import resource_path
 from core.scene import Scene, SceneManager
 from core.vfx import VFXAnimation, load_vfx_frames
 
@@ -42,14 +43,16 @@ class BaseGameplay(Scene):
         self.level_id = level_id
         level = LEVELS[level_id]
 
-        self.map = TMXMap(level["map"], zoom=level.get("zoom"))
+        self.map = TMXMap(str(resource_path(level["map"])), zoom=level.get("zoom"))
 
         self.spawn_x = self.map.offset[0] + self.map.scaled_size[0] // 2
         self.spawn_y = self.map.offset[1] + self.map.scaled_size[1] // 2
 
         self.players: list[Player] = []  # subclass fills this
 
-        self.landing_frames = load_vfx_frames("assets/vfx/landing", scale=self.map.scale)
+        self.landing_frames = load_vfx_frames(
+            str(resource_path("assets/vfx/landing")), scale=self.map.scale
+        )
         self.vfx_list: list[VFXAnimation] = []
         self.split_screen = SplitScreen()
         self.zone_announcement = ZoneAnnouncement(level["zone_subtitle"], level["zone_title"])
@@ -89,7 +92,9 @@ class BaseGameplay(Scene):
             p.rect.y = int(p.pos.y)
 
         self._sync_player_scales()
-        self.landing_frames = load_vfx_frames("assets/vfx/landing", scale=self.map.scale)
+        self.landing_frames = load_vfx_frames(
+            str(resource_path("assets/vfx/landing")), scale=self.map.scale
+        )
         self.vfx_list.clear()
         self.sign_manager = SignManager(self.map.sign_rects, self.sign_manager._texts)
         self.sign_dialogs = [SignDialog(), SignDialog()]

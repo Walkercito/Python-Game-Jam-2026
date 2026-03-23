@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pygame
 
 from core.config.constants import (
@@ -17,9 +15,10 @@ from core.config.constants import (
     SIGN_DIALOG_Y_RATIO,
 )
 from core.gui import Label, Panel
+from core.resource import resource_path
 from core.utils import load_spritesheet
 
-PRESSURE_PLATE_PATH = Path("assets/adve/pressure_plate.png")
+PRESSURE_PLATE_PATH = resource_path("assets/adve/pressure_plate.png")
 PRESSURE_FRAME_SIZE = (8, 8)
 PRESSURE_FRAME_COUNT = 3
 

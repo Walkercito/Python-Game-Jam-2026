@@ -25,6 +25,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pre-commit>=4.0",
+    "pyinstaller>=6.19.0",
     "ruff>=0.15.7",
     "ty>=0.0.24",
 ]

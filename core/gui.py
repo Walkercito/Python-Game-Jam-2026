@@ -1,9 +1,9 @@
-from pathlib import Path
-
 import pygame
 
-GUI_DIR = Path("assets/gui/panels")
-FONT_PATH = Path("assets/font/BoldPixels.ttf")
+from core.resource import resource_path
+
+GUI_DIR = resource_path("assets/gui/panels")
+FONT_PATH = resource_path("assets/font/BoldPixels.ttf")
 SLICE_MARGIN = 32
 
 

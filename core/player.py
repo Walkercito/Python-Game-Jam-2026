@@ -102,7 +102,9 @@ class Player:
 
         self.name = name
         self.outline_color = outline_color
-        self.sprite_dir = Path(f"assets/characters/{character}")
+        from core.resource import resource_path
+
+        self.sprite_dir = resource_path(f"assets/characters/{character}")
         self.sprite_prefix = character
         self.current_scale = PLAYER_SCALE
         self.animations = _build_animations(

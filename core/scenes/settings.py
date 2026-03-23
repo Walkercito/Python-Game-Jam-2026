@@ -1,13 +1,12 @@
-from pathlib import Path
-
 import pygame
 
 from core.config.constants import BG_COLOR
 from core.config.game_settings import settings
 from core.gui import Button, Divider, Label, Panel, Slider, Toggle
+from core.resource import resource_path
 from core.scene import Scene, SceneManager
 
-ICON_DIR = Path("assets/gui/icons")
+ICON_DIR = resource_path("assets/gui/icons")
 TAB_ICON_SIZE = 32
 TAB_NAMES = ["Screen", "Audio", "Gameplay", "Credits"]
 TAB_ICONS = [

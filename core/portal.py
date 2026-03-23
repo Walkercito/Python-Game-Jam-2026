@@ -1,10 +1,11 @@
 import math
 from enum import Enum, auto
-from pathlib import Path
 
 import pygame
 
-SPRITESHEET_PATH = Path("assets/portal/holy_shield.png")
+from core.resource import resource_path
+
+SPRITESHEET_PATH = resource_path("assets/portal/holy_shield.png")
 FRAME_SIZE = 64
 FRAME_COUNT = 11
 PORTAL_FPS = 10
