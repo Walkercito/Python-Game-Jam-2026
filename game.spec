@@ -1,4 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
+import platform
+
+is_windows = platform.system() == 'Windows'
+is_mac = platform.system() == 'Darwin'
 
 a = Analysis(
     ['main.py'],
@@ -44,7 +48,7 @@ exe = EXE(
     name='PythonGameJam2026',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=True,
+    strip=not is_windows,
     upx=True,
     console=False,
 )
@@ -53,7 +57,7 @@ coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
-    strip=True,
+    strip=not is_windows,
     upx=True,
     upx_exclude=[],
     name='PythonGameJam2026',
