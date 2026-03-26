@@ -5,14 +5,13 @@ from core.config.game_settings import settings
 from core.gui import FONT_PATH
 from core.resource import resource_path
 from core.scene import SceneManager
-from core.scenes.main_menu import MainMenu
 
 CURSOR_PATH = resource_path("assets/gui/icons/ic_cursor_fill.png")
 CURSOR_SIZE = 24
 
 
 class Engine:
-    def __init__(self) -> None:
+    def __init__(self, start_level: str | None = None) -> None:
         pygame.init()
         pygame.mixer.init()
         self.screen = settings.apply_display_mode()
@@ -20,11 +19,18 @@ class Engine:
         self.clock = pygame.time.Clock()
         self.running = True
         self.scene_manager = SceneManager()
-        self.scene_manager.push(MainMenu(self.scene_manager))
+
+        if start_level:
+            from core.scenes.gameplay import Gameplay
+
+            self.scene_manager.push(Gameplay(self.scene_manager, level_id=start_level))
+        else:
+            from core.scenes.main_menu import MainMenu
+
+            self.scene_manager.push(MainMenu(self.scene_manager))
         settings.consume_dirty()
         self._fps_font = pygame.font.Font(FONT_PATH, 14)
 
-        # Custom cursor
         cursor_img = pygame.image.load(CURSOR_PATH).convert_alpha()
         self._cursor = pygame.transform.scale(cursor_img, (CURSOR_SIZE, CURSOR_SIZE))
         pygame.mouse.set_visible(False)
@@ -52,7 +58,6 @@ class Engine:
                 )
                 self.screen.blit(fps_text, (8, 8))
 
-            # Custom cursor — only in menus/UI, hidden during gameplay
             from core.scenes.base_gameplay import BaseGameplay
 
             top = self.scene_manager.current
@@ -64,7 +69,6 @@ class Engine:
             pygame.display.flip()
             self.clock.tick(FPS)
 
-        # Cleanup any running servers/tunnels in the scene stack
         for scene in self.scene_manager.stack:
             if hasattr(scene, "tunnel") and scene.tunnel:
                 scene.tunnel.stop()

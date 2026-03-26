@@ -35,7 +35,7 @@ from core.config.constants import (
     WATER_MAX_FALL_MOD,
     WATER_SPEED_MOD,
 )
-from core.utils import lerp, load_spritesheet
+from core.utils import add_outline, lerp, load_spritesheet
 
 KEY_MAP = {
     "a": pygame.K_a,
@@ -46,27 +46,14 @@ KEY_MAP = {
     "[2]": pygame.K_KP_2,
     "[3]": pygame.K_KP_3,
     "[5]": pygame.K_KP_5,
+    "left": pygame.K_LEFT,
+    "right": pygame.K_RIGHT,
+    "up": pygame.K_UP,
+    "down": pygame.K_DOWN,
 }
 
 OUTLINE_COLOR = (255, 255, 255)
 ANIM_KEYS = ["idle", "walk", "jump", "die"]
-
-
-def _add_outline(
-    surface: pygame.Surface,
-    color: tuple[int, int, int] = OUTLINE_COLOR,
-) -> pygame.Surface:
-    w, h = surface.get_size()
-    outlined = pygame.Surface((w + 2, h + 2), pygame.SRCALPHA)
-
-    mask = pygame.mask.from_surface(surface)
-    mask_surface = mask.to_surface(setcolor=color, unsetcolor=(0, 0, 0, 0))
-
-    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-        outlined.blit(mask_surface, (1 + dx, 1 + dy))
-
-    outlined.blit(surface, (1, 1))
-    return outlined
 
 
 def _build_animations(
@@ -79,7 +66,7 @@ def _build_animations(
     for key in ANIM_KEYS:
         path = sprite_dir / f"{prefix}_{key}.png"
         raw[key] = load_spritesheet(path, SPRITE_FRAME_SIZE, SPRITE_FRAME_COUNT, scale)
-    return {key: [_add_outline(f, outline_color) for f in frames] for key, frames in raw.items()}
+    return {key: [add_outline(f, outline_color) for f in frames] for key, frames in raw.items()}
 
 
 class Player:
@@ -222,7 +209,6 @@ class Player:
 
         self.handle_input()
 
-        # Stairs
         if self.on_stairs:
             keys = pygame.key.get_pressed()
             if keys[self.key_jump]:
@@ -233,7 +219,6 @@ class Player:
                 self.velocity.y *= STAIRS_FRICTION
             gravity_mod = 0.0
 
-        # Horizontal
         self.velocity.x += self.acceleration.x * speed_mod * dt
         self.velocity.x -= self.velocity.x * PLAYER_FRICTION * dt
 
@@ -248,13 +233,10 @@ class Player:
         self.rect.x = int(self.pos.x)
         self._collide_x(collision_rects)
 
-        # Track airtime before collision
-        if self.velocity.y > 0 and self.velocity.y > 0:
-            self._airtime += dt if not self.on_ground else 0
+        if self.velocity.y > 0 and not self.on_ground:
+            self._airtime += dt
         elif self.velocity.y < 0:
             self._airtime = 0.0
-
-        # Vertical
         self.velocity.y += PLAYER_GRAVITY * gravity_mod * dt
 
         if self.in_water:
@@ -262,21 +244,20 @@ class Player:
             if self.velocity.y > max_fall:
                 self.velocity.y = max_fall
 
+        prev_bottom = self.rect.bottom
         self.pos.y += self.velocity.y * dt
         self.rect.y = int(self.pos.y)
         self._collide_y(collision_rects)
 
-        # One-way platforms
         if not self.dropping_through:
-            self._collide_platforms(platform_rects or [])
-            self._collide_platforms(breakable_rects or [])
+            self._collide_platforms(platform_rects or [], prev_bottom)
+            self._collide_platforms(breakable_rects or [], prev_bottom)
 
         self._check_ground(collision_rects)
         if not self.dropping_through:
             self._check_ground(platform_rects or [])
             self._check_ground(breakable_rects or [])
 
-        # Track airtime for fall damage
         if not self.on_ground and self.velocity.y > 0:
             self._airtime += dt
         else:
@@ -348,11 +329,12 @@ class Player:
                 self.pos.y = float(self.rect.y)
                 self.velocity.y = 0
 
-    def _collide_platforms(self, rects: list[pygame.Rect]) -> None:
+    def _collide_platforms(self, rects: list[pygame.Rect], prev_bottom: int) -> None:
         for plat in rects:
             if not self.rect.colliderect(plat):
                 continue
-            if self.velocity.y > 0 and self.rect.bottom <= plat.top + self.velocity.y * 0.05 + 4:
+            # Only collide if falling AND player was above the platform top before this frame
+            if self.velocity.y > 0 and prev_bottom <= plat.top + 4:
                 self.rect.bottom = plat.top
                 self.on_ground = True
                 self.has_double_jump = False
@@ -362,7 +344,7 @@ class Player:
     def _check_ground(self, rects: list[pygame.Rect]) -> None:
         if self.on_ground:
             return
-        probe = pygame.Rect(self.rect.x, self.rect.y + 1, self.rect.width, self.rect.height)
+        probe = pygame.Rect(self.rect.x, self.rect.y + 4, self.rect.width, self.rect.height)
         for wall in rects:
             if probe.colliderect(wall) and self.velocity.y >= 0:
                 self.on_ground = True

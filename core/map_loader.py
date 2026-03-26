@@ -78,14 +78,29 @@ class TMXMap:
             properties = LAYER_PROPERTIES.get(layer.name, {})
             self.layers[layer.name] = MapLayer(layer, self.tile_size, properties, self.tmx_data)
 
-    HIDDEN_LAYERS: frozenset[str] = frozenset({"Pressure", "Portal", "BrakablePlatform"})
+    HIDDEN_LAYERS: frozenset[str] = frozenset(
+        {
+            "Pressure",
+            "Portal",
+            "BrakablePlatform",
+            "Door",
+            "DoorPressure",
+            "MovingPlatforms",
+            "MovingPlatformsPoints",
+            "SpawnA",
+            "SpawnB",
+        }
+    )
+
+    NPC_LAYERS: tuple[str, ...] = ("Duck", "People", "Lizard")
+    HIDDEN_LAYERS_EXTRA: frozenset[str] = frozenset({"SecondDoor", "SecondDoorPressure"})
 
     def _pre_render(self) -> pygame.Surface:
         surface = pygame.Surface(self.pixel_size, pygame.SRCALPHA)
         for layer in self.tmx_data.visible_layers:
             if not isinstance(layer, pytmx.TiledTileLayer):
                 continue
-            if layer.name in self.HIDDEN_LAYERS:
+            if layer.name in self.HIDDEN_LAYERS or layer.name in self.HIDDEN_LAYERS_EXTRA:
                 continue
             for x, y, image in layer.tiles():
                 surface.blit(image, (x * self.tile_size[0], y * self.tile_size[1]))
@@ -166,6 +181,43 @@ class TMXMap:
     @property
     def platform_rects(self) -> list[pygame.Rect]:
         return self._layer_rects("Platform")
+
+    @property
+    def door_pressure_rects(self) -> list[pygame.Rect]:
+        return self._layer_rects("DoorPressure")
+
+    @property
+    def door_rects(self) -> list[pygame.Rect]:
+        return self._layer_rects("Door")
+
+    @property
+    def moving_platform_rects(self) -> list[pygame.Rect]:
+        return self._layer_rects("MovingPlatforms")
+
+    @property
+    def moving_platform_points(self) -> list[pygame.Rect]:
+        return self._layer_rects("MovingPlatformsPoints")
+
+    @property
+    def second_door_pressure_rects(self) -> list[pygame.Rect]:
+        return self._layer_rects("SecondDoorPressure")
+
+    @property
+    def npc_rects(self) -> list[tuple[str, pygame.Rect]]:
+        """Returns (layer_name, scaled_rect) for all NPC tiles."""
+        result = []
+        for name in self.NPC_LAYERS:
+            for rect in self._layer_rects(name):
+                result.append((name, rect))
+        return result
+
+    def get_spawn(self, player: str) -> tuple[float, float] | None:
+        """Get spawn position from SpawnA/SpawnB layer. Returns scaled screen coords."""
+        layer_name = f"Spawn{player.upper()}"
+        rects = self._layer_rects(layer_name)
+        if rects:
+            return float(rects[0].centerx), float(rects[0].centery)
+        return None
 
     def get_layer_tiles(self, name: str) -> list[tuple[pygame.Rect, pygame.Surface]]:
         layer = self.layers.get(name)

@@ -1,5 +1,6 @@
 import pygame
 
+from core.config.constants import BG_COLOR
 from core.config.game_settings import settings
 from core.gui import Button, Divider, Label, TextInput, Toggle
 from core.network import (
@@ -12,8 +13,6 @@ from core.network import (
     generate_party_code,
 )
 from core.scene import Scene, SceneManager
-
-BG_COLOR = (14, 7, 27)
 
 
 class HostLobby(Scene):
@@ -28,7 +27,6 @@ class HostLobby(Scene):
         self.name_label = Label("Your Name", size=24)
         self.name_input = TextInput(width=320, height=54, placeholder="Enter name...", font_size=22)
 
-        # Internet toggle
         self.internet_label = Label("Internet", size=20)
         self.internet_toggle = Toggle(width=70, height=36, active=False, style=6)
         self.internet_toggle.on_change = lambda _v: None  # just a flag
@@ -97,7 +95,6 @@ class HostLobby(Scene):
         self.code_hint.set_text("LAN party code")
         self.status_label.set_text("Waiting for player...")
 
-        # Internet mode
         if self.internet_toggle.active:
             if NgrokTunnel.is_available():
                 self.tunnel = NgrokTunnel()
@@ -161,7 +158,6 @@ class HostLobby(Scene):
                     self.broadcaster.stop()
                 self._start_network_game()
 
-        # Poll ngrok tunnel status
         if self.tunnel and not self.tunnel.ready and not self.tunnel.error:
             self.internet_url_label.set_text("Starting tunnel...")
         elif self.tunnel and self.tunnel.ready:
@@ -193,13 +189,11 @@ class HostLobby(Scene):
             self.internet_toggle.draw(surface)
             self.host_btn.draw(surface)
         else:
-            # LAN code
             self.code_label.draw(surface, cx, cy - 90)
             self.code_hint.draw(surface, cx, cy - 55)
             self.copy_btn.set_position(cx - 110, cy - 20)
             self.copy_btn.draw(surface)
 
-            # Internet URL (if tunnel active)
             if self.tunnel:
                 self.internet_url_label.draw(surface, cx, cy + 30)
                 if self.tunnel.ready:
@@ -274,7 +268,6 @@ class JoinLobby(Scene):
         self.player_name = self.name_input.text.strip() or "Player"
         raw = self.code_input.text.strip()
 
-        # Direct IP/URL connect (for internet play via ngrok or IP)
         if "." in raw:
             host = raw.split(":")[0]
             port = int(raw.split(":")[1]) if ":" in raw else DEFAULT_PORT
@@ -285,7 +278,6 @@ class JoinLobby(Scene):
             self.widgets = [self.back_btn]
             return
 
-        # LAN party code discovery
         code = raw.upper().replace("-", "")
         if len(code) != 6:
             self.status_label.set_text("Enter a 6-char code or address")

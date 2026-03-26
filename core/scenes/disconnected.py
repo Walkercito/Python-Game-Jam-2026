@@ -1,10 +1,9 @@
 import pygame
 
+from core.config.constants import BG_COLOR
 from core.config.game_settings import settings
 from core.gui import Button, Divider, Label
 from core.scene import Scene, SceneManager
-
-BG_COLOR = (14, 7, 27)
 
 
 class Disconnected(Scene):

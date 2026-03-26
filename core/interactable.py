@@ -53,10 +53,15 @@ class SignManager:
 
 
 class SignDialog:
+    WAVE_SPEED = 4.0
+    WAVE_AMPLITUDE = 3.0
+    WAVE_SPACING = 0.3
+
     def __init__(self) -> None:
         self.current_text = ""
         self.alpha = 0.0
         self.visible = False
+        self.time = 0.0
 
         self.panel = Panel(
             400,
@@ -66,27 +71,58 @@ class SignDialog:
             border_color=SIGN_DIALOG_BORDER,
         )
         self.label = Label("", size=SIGN_DIALOG_FONT_SIZE)
+        self._has_wavy = False
+        self._font: pygame.font.Font | None = None
+
+    MAX_WIDTH = 500
 
     def show(self, text: str) -> None:
         if text != self.current_text:
             self.current_text = text
-            self.label.set_text(text)
+            self._has_wavy = "*" in text
 
-            text_w = self.label.rect.width
-            panel_w = max(text_w + SIGN_DIALOG_PADDING, SIGN_DIALOG_MIN_WIDTH)
+            clean = text.replace("*", "")
+            font = self._get_font()
+
+            # Word-wrap into lines
+            self._lines = self._wrap_text(clean, font, self.MAX_WIDTH)
+            self.label.set_text(clean)
+
+            line_w = max(font.size(line)[0] for line in self._lines) if self._lines else 0
+            panel_w = max(line_w + SIGN_DIALOG_PADDING, SIGN_DIALOG_MIN_WIDTH)
+            panel_h = 50 + len(self._lines) * (font.get_height() + 4)
             self.panel = Panel(
                 panel_w,
-                80,
+                panel_h,
                 style=SIGN_DIALOG_STYLE,
                 fill_color=SIGN_DIALOG_FILL,
                 border_color=SIGN_DIALOG_BORDER,
             )
+            self._panel_h = panel_h
         self.visible = True
+
+    @staticmethod
+    def _wrap_text(text: str, font: pygame.font.Font, max_w: int) -> list[str]:
+        words = text.split(" ")
+        lines: list[str] = []
+        current = ""
+        for word in words:
+            test = f"{current} {word}".strip()
+            if font.size(test)[0] <= max_w:
+                current = test
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+        return lines
 
     def hide(self) -> None:
         self.visible = False
 
     def update(self, dt: float) -> None:
+        self.time += dt
         target = 1.0 if self.visible else 0.0
         if self.alpha < target:
             self.alpha = min(self.alpha + SIGN_DIALOG_FADE_SPEED * dt, 1.0)
@@ -97,17 +133,82 @@ class SignDialog:
         sw, sh = surface.get_size()
         self.draw_at(surface, sw // 2, int(sh * SIGN_DIALOG_Y_RATIO))
 
+    def _get_font(self) -> pygame.font.Font:
+        if self._font is None:
+            from core.gui import FONT_PATH
+
+            self._font = pygame.font.Font(FONT_PATH, SIGN_DIALOG_FONT_SIZE)
+        return self._font
+
+    def _draw_wavy_text(self, surface: pygame.Surface, cx: int, base_y: int) -> None:
+        """Render wrapped text with *wavy* sections animated per-character."""
+        import math
+
+        font = self._get_font()
+        text = self.current_text
+        line_h = font.get_height() + 4
+        num_lines = len(self._lines) if hasattr(self, "_lines") else 1
+        start_y = base_y - (num_lines * line_h) // 2
+
+        segments: list[tuple[str, bool]] = []
+        parts = text.split("*")
+        for idx, part in enumerate(parts):
+            if part:
+                segments.append((part, idx % 2 == 1))
+
+        chars: list[tuple[str, bool]] = []
+        for seg_text, is_wavy in segments:
+            for c in seg_text:
+                chars.append((c, is_wavy))
+
+        global_idx = 0
+        for line_num, line in enumerate(self._lines):
+            line_w = font.size(line)[0]
+            lx = cx - line_w // 2
+            ly = start_y + line_num * line_h
+
+            for _ in line:
+                if global_idx >= len(chars):
+                    break
+                char, is_wavy = chars[global_idx]
+
+                char_surf = font.render(char, True, (255, 255, 255))
+
+                if is_wavy:
+                    offset_y = (
+                        math.sin(self.time * self.WAVE_SPEED + global_idx * self.WAVE_SPACING)
+                        * self.WAVE_AMPLITUDE
+                    )
+                else:
+                    offset_y = 0
+
+                surface.blit(char_surf, (lx, ly + int(offset_y)))
+                lx += char_surf.get_width()
+                global_idx += 1
+
     def draw_at(self, surface: pygame.Surface, cx: int, y: int) -> None:
         if self.alpha <= 0.01:
             return
 
         sw, sh = surface.get_size()
-
         temp = pygame.Surface((sw, sh), pygame.SRCALPHA)
 
+        ph = getattr(self, "_panel_h", 80)
         pw = self.panel.image.get_width()
-        self.panel.draw(temp, cx - pw // 2, y - 40)
-        self.label.draw(temp, cx, y)
+        self.panel.draw(temp, cx - pw // 2, y - ph // 2)
+
+        if self._has_wavy:
+            self._draw_wavy_text(temp, cx, y)
+        elif hasattr(self, "_lines") and len(self._lines) > 1:
+            font = self._get_font()
+            line_h = font.get_height() + 4
+            start_y = y - (len(self._lines) * line_h) // 2
+            for i, line in enumerate(self._lines):
+                line_surf = font.render(line, True, (255, 255, 255))
+                line_rect = line_surf.get_rect(center=(cx, start_y + i * line_h + line_h // 2))
+                temp.blit(line_surf, line_rect)
+        else:
+            self.label.draw(temp, cx, y)
 
         temp.set_alpha(int(255 * self.alpha))
         surface.blit(temp, (0, 0))
@@ -168,7 +269,6 @@ class BreakablePlatform:
         if self.broken:
             return
 
-        # Trigger on overlap OR standing on top (feet at platform top)
         touching = any(
             pr.colliderect(self.rect)
             or (
@@ -195,7 +295,6 @@ class BreakablePlatform:
         ox, oy = camera_offset
         x = self.rect.x - ox
         y = self.rect.y - oy
-        # Shake when about to break
         if self.shake_amount > 0:
             import random
 

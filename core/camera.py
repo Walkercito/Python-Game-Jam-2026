@@ -90,13 +90,11 @@ class SplitScreen:
         dy = rect2.centery - rect1.centery
         distance = math.hypot(dx, dy)
 
-        # Determine target split state with hysteresis
         if distance > SPLIT_THRESHOLD:
             self._target_split = 1.0
         elif distance < SPLIT_MERGE_THRESHOLD:
             self._target_split = 0.0
 
-        # Smooth transition
         self.split_amount = lerp(
             self.split_amount,
             self._target_split,
@@ -107,10 +105,8 @@ class SplitScreen:
         if self.split_amount > 0.99:
             self.split_amount = 1.0
 
-        # Angle of the split line (perpendicular to player direction)
         if distance > 1.0:
             target_angle = math.atan2(dy, dx) + math.pi / 2
-            # Smooth the angle (handle wrapping)
             diff = target_angle - self.split_angle
             while diff > math.pi:
                 diff -= 2 * math.pi
@@ -118,15 +114,12 @@ class SplitScreen:
                 diff += 2 * math.pi
             self.split_angle += diff * min(self.TRANSITION_SPEED * dt, 1.0)
 
-        # Update cameras
         mid_x = (rect1.centerx + rect2.centerx) / 2
         mid_y = (rect1.centery + rect2.centery) / 2
 
         self.shared_cam.follow_point(mid_x, mid_y, sw, sh)
         self.shared_cam.update(dt)
 
-        # Offset each camera so player appears centered in their
-        # visible half, not at the split line.
         if distance > 1.0:
             dir_x = dx / distance
             dir_y = dy / distance
@@ -189,15 +182,12 @@ class SplitScreen:
         sl_dx = math.cos(self.split_angle)
         sl_dy = math.sin(self.split_angle)
 
-        # Normal pointing into the desired half
         norm_x = -sl_dy * side
         norm_y = sl_dx * side
 
-        # Two points on the split line, extended beyond screen
         p1 = (cx - sl_dx * extent, cy - sl_dy * extent)
         p2 = (cx + sl_dx * extent, cy + sl_dy * extent)
 
-        # Two points pushed far into the half-plane
         p3 = (p2[0] + norm_x * extent, p2[1] + norm_y * extent)
         p4 = (p1[0] + norm_x * extent, p1[1] + norm_y * extent)
 
@@ -234,18 +224,15 @@ class SplitScreen:
                 hud_fn(screen, 1, center)
             return
 
-        # Compute HUD centers for each half based on split angle
         sl_dx = math.cos(self.split_angle)
         sl_dy = math.sin(self.split_angle)
         p1_side = self._determine_p1_side(rect1, rect2)
-        # Normal pointing into P1's half
         norm_x = -sl_dy * p1_side
         norm_y = sl_dx * p1_side
         shift = sw // 4
         p1_center = (int(sw / 2 + norm_x * shift), int(sh / 2 + norm_y * shift))
         p2_center = (int(sw / 2 - norm_x * shift), int(sh / 2 - norm_y * shift))
 
-        # Reuse cached surfaces
         surf1, surf2, mask, composite = self._get_surfaces(sw, sh)
 
         off1 = self._blended_offset(self.cam1)
@@ -254,18 +241,13 @@ class SplitScreen:
         draw_fn(surf1, off1, (sw, sh))
         draw_fn(surf2, off2, (sw, sh))
 
-        # Per-player HUD on each surface before masking
         if hud_fn:
             hud_fn(surf1, 0, p1_center)
             hud_fn(surf2, 1, p2_center)
 
-        # Build polygon for P1's half
         p1_poly = self._build_half_polygon(sw, sh, p1_side)
-
-        # Composite: surf2 as background, surf1 masked to P1's half
         screen.blit(surf2, (0, 0))
 
-        # Build mask and apply to surf1 via cached composite surface
         mask.fill((0, 0, 0, 0))
         pygame.draw.polygon(mask, (255, 255, 255, 255), p1_poly)
 
@@ -274,7 +256,6 @@ class SplitScreen:
         composite.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
         screen.blit(composite, (0, 0))
 
-        # Draw divider line directly on screen
         cx, cy = sw / 2, sh / 2
         diag = math.hypot(sw, sh)
         lp1 = (cx - sl_dx * diag, cy - sl_dy * diag)

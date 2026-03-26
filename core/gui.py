@@ -195,12 +195,20 @@ class Button:
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.MOUSEMOTION:
+            was_hovered = self.hovered
             self.hovered = self.rect.collidepoint(event.pos)
+            if self.hovered and not was_hovered:
+                from core.audio import play_ui
+
+                play_ui("button_hover")
         elif (
             event.type == pygame.MOUSEBUTTONDOWN
             and event.button == 1
             and self.rect.collidepoint(event.pos)
         ):
+            from core.audio import play_ui
+
+            play_ui("button_click")
             self.callback()
 
     def draw(self, surface: pygame.Surface) -> None:

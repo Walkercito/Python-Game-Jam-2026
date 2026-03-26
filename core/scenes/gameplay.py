@@ -1,10 +1,9 @@
 from core.config.constants import (
-    P1_KEYS,
+    CONTROL_SETS,
     P1_OUTLINE_LOCAL,
-    P2_KEYS,
     P2_OUTLINE_LOCAL,
-    PLAYER_SPAWN_OFFSET,
 )
+from core.config.game_settings import settings
 from core.player import Player
 from core.scene import SceneManager
 from core.scenes.base_gameplay import BaseGameplay
@@ -22,18 +21,21 @@ class Gameplay(BaseGameplay):
         self._p1_name = p1_name
         self._p2_name = p2_name
 
+        p1_keys = CONTROL_SETS[settings.p1_controls]
+        p2_keys = CONTROL_SETS[settings.p2_controls]
+
         self.player1 = Player(
-            self.spawn_x - PLAYER_SPAWN_OFFSET,
+            self.spawn_x,
             self.spawn_y,
-            keys=P1_KEYS,
+            keys=p1_keys,
             outline_color=P1_OUTLINE_LOCAL,
             character="green",
             name=p1_name,
         )
         self.player2 = Player(
-            self.spawn_x + PLAYER_SPAWN_OFFSET,
-            self.spawn_y,
-            keys=P2_KEYS,
+            self.spawn_b_x,
+            self.spawn_b_y,
+            keys=p2_keys,
             outline_color=P2_OUTLINE_LOCAL,
             character="orange",
             name=p2_name,
@@ -52,6 +54,7 @@ class Gameplay(BaseGameplay):
             self.manager.replace(MainMenu(self.manager))
 
     def update(self, dt: float) -> None:
+        self._update_world(dt)
         for i, p in enumerate(self.players):
             self._update_player(i, p, dt)
         self._update_shared(dt)

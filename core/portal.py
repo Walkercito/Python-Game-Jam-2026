@@ -3,6 +3,7 @@ from enum import Enum, auto
 
 import pygame
 
+from core.config.constants import BG_COLOR
 from core.resource import resource_path
 
 SPRITESHEET_PATH = resource_path("assets/portal/holy_shield.png")
@@ -38,7 +39,6 @@ def _load_portal_frames(scale: float) -> list[pygame.Surface]:
     for i in range(FRAME_COUNT):
         frame = sheet.subsurface(pygame.Rect(i * FRAME_SIZE, 0, FRAME_SIZE, FRAME_SIZE))
         frames.append(pygame.transform.scale(frame, (scaled, scaled)))
-    # Empty frame at the end
     empty = pygame.Surface((scaled, scaled), pygame.SRCALPHA)
     frames.append(empty)
     return frames
@@ -49,7 +49,6 @@ class Portal:
         self.frames = _load_portal_frames(map_scale)
         self.frame_size = self.frames[0].get_width()
 
-        # Center on the tile position
         self.x = screen_rect.centerx
         self.y = screen_rect.centery
         self.rect = pygame.Rect(
@@ -66,10 +65,7 @@ class Portal:
         self.p1_entered = False
         self.p2_entered = False
 
-        # Cutaway
         self.cutaway_alpha = 0.0
-
-        # Vignette
         self.vignette_progress = 0.0
 
     def activate(self) -> None:
@@ -114,7 +110,6 @@ class Portal:
                 self.state = PortalState.IDLE
 
         elif self.state == PortalState.IDLE:
-            # Check if players enter
             if not self.p1_entered and self._player_in_portal(p1_rect):
                 self.p1_entered = True
             if not self.p2_entered and self._player_in_portal(p2_rect):
@@ -125,14 +120,12 @@ class Portal:
                 self.frame_index = HOLD_FRAME
 
         elif self.state == PortalState.CLOSING:
-            # Reverse from frame 7 to frame 1
             self.frame_index -= dt * PORTAL_FPS
             if self.frame_index <= 0:
                 self.frame_index = 0
                 self.state = PortalState.DISSIPATING
 
         elif self.state == PortalState.DISSIPATING:
-            # Play full animation 1 → 12 (including empty frame)
             self.frame_index += dt * PORTAL_FPS
             total = FRAME_COUNT  # 11 + 1 empty = index 11
             if self.frame_index >= total:
@@ -176,9 +169,8 @@ class Portal:
         frame = self.frames[idx]
 
         overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        overlay.fill((14, 7, 27, int(200 * self.cutaway_alpha)))
+        overlay.fill((*BG_COLOR, int(200 * self.cutaway_alpha)))
 
-        # Draw the portal frame centered on screen, larger
         big_size = min(sw, sh) // 2
         big_frame = pygame.transform.scale(frame, (big_size, big_size))
         fx = (sw - big_size) // 2
@@ -199,12 +191,11 @@ class Portal:
         center_x = self.x - ox
         center_y = self.y - oy
 
-        # Iris/vignette: shrinking circle revealing black
         max_radius = int(math.hypot(sw, sh))
         radius = int(max_radius * (1.0 - self.vignette_progress))
 
         vignette = pygame.Surface((sw, sh), pygame.SRCALPHA)
-        vignette.fill((14, 7, 27, 255))
+        vignette.fill((*BG_COLOR, 255))
         if radius > 0:
             pygame.draw.circle(vignette, (0, 0, 0, 0), (center_x, center_y), radius)
         surface.blit(vignette, (0, 0))

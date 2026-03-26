@@ -214,7 +214,6 @@ class NgrokTunnel:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            # Wait for ngrok to start and poll for URL
             for _ in range(30):
                 time.sleep(0.5)
                 url = self._get_url()

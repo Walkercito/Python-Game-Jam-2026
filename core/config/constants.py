@@ -1,7 +1,7 @@
 SCREEN_WIDTH = 1280
 SCREEN_HEIGHT = 720
 FPS = 60
-TITLE = "No name yet"
+TITLE = "Before Nightfall"
 
 # Colors
 BG_COLOR = (14, 7, 27)
@@ -79,12 +79,21 @@ LANDING_SHAKE_DURATION = 0.12
 P1_KEYS = {"left": "a", "right": "d", "jump": "w", "down": "s"}
 P2_KEYS = {"left": "[1]", "right": "[3]", "jump": "[5]", "down": "[2]"}
 
+CONTROL_SETS = {
+    "WASD": {"left": "a", "right": "d", "jump": "w", "down": "s"},
+    "Numpad": {"left": "[1]", "right": "[3]", "jump": "[5]", "down": "[2]"},
+    "Arrows": {"left": "left", "right": "right", "jump": "up", "down": "down"},
+}
+
+CONTROL_NAMES = ["WASD", "Numpad", "Arrows"]
+
 # Split screen
 SPLIT_THRESHOLD = 350.0
 SPLIT_MERGE_THRESHOLD = 300.0
 
 # Interactables
 INTERACT_RADIUS = 60
+DOOR_PLATE_ANIM_SPEED = 6
 BREAKABLE_TIMER = 0.5
 BREAKABLE_SHAKE_MULTIPLIER = 3.0
 PRESSURE_FPS = 6
@@ -98,6 +107,9 @@ SIGN_DIALOG_MIN_WIDTH = 300
 SIGN_DIALOG_PADDING = 100
 SIGN_DIALOG_Y_RATIO = 0.78
 SIGN_DIALOG_FADE_SPEED = 6.0
+
+# Moving platforms
+MOVING_PLATFORM_SPEED = 60.0
 
 # Sprite defaults
 SPRITE_FRAME_SIZE = (8, 8)

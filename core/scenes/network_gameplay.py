@@ -29,17 +29,28 @@ class NetworkGameplay(BaseGameplay):
             if p["slot"] != self.client.my_slot:
                 remote_name = p["name"]
 
+        local_spawn = (
+            (self.spawn_x, self.spawn_y)
+            if self.client.my_slot == 0
+            else (self.spawn_b_x, self.spawn_b_y)
+        )
+        remote_spawn = (
+            (self.spawn_b_x, self.spawn_b_y)
+            if self.client.my_slot == 0
+            else (self.spawn_x, self.spawn_y)
+        )
+
         self.local_player = Player(
-            self.spawn_x,
-            self.spawn_y,
+            local_spawn[0],
+            local_spawn[1],
             keys=P1_KEYS,
             outline_color=LOCAL_OUTLINE,
             character=local_char,
             name=self.client.my_name,
         )
         self.remote_player = Player(
-            self.spawn_x,
-            self.spawn_y,
+            remote_spawn[0],
+            remote_spawn[1],
             keys=P1_KEYS,
             outline_color=REMOTE_OUTLINE,
             character=remote_char,
@@ -53,6 +64,9 @@ class NetworkGameplay(BaseGameplay):
 
     def _show_nametag(self, index: int) -> bool:
         return index == 1  # only remote
+
+    def _should_play_sfx(self, player_index: int) -> bool:
+        return player_index == 0  # only local player
 
     def _on_level_complete(self) -> None:
         from core.scenes.main_menu import MainMenu
@@ -95,10 +109,9 @@ class NetworkGameplay(BaseGameplay):
             self.manager.replace(Disconnected(self.manager, "Connection to host lost"))
             return
 
-        # Local player with full physics
+        self._update_world(dt)
         self._update_player(0, self.local_player, dt)
 
-        # Remote player from network
         if self.client.has_remote_player:
             self._apply_remote_state()
             self.remote_player._animate(dt)

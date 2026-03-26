@@ -31,13 +31,11 @@ class Settings(Scene):
         self.divider_bottom = Divider(scale=0.8, style=3, fade=True)
         self.divider_bottom.image = pygame.transform.flip(self.divider_bottom.image, True, False)
 
-        # Tabs
         self.tab_icons = [_load_icon(name) for name in TAB_ICONS]
         self.tab_labels = [Label(name, size=14, color=(160, 155, 140)) for name in TAB_NAMES]
         self.active_tab = 0
         self.tab_rects: list[pygame.Rect] = []
 
-        # Screen tab
         self.fullscreen_label = Label("Fullscreen", size=24)
         self.fullscreen_toggle = Toggle(width=80, height=42, active=settings.is_fullscreen, style=6)
         self.fullscreen_toggle.on_change = self._on_fullscreen
@@ -57,7 +55,6 @@ class Settings(Scene):
         self.fps_toggle = Toggle(width=80, height=42, active=settings.show_fps, style=6)
         self.fps_toggle.on_change = self._on_fps
 
-        # Audio tab
         self.music_label = Label("Music", size=24)
         self.music_slider = Slider(width=240, height=42, value=settings.music_volume, style=6)
         self.music_slider.on_change = self._on_music
@@ -66,11 +63,60 @@ class Settings(Scene):
         self.sfx_slider = Slider(width=240, height=42, value=settings.sfx_volume, style=6)
         self.sfx_slider.on_change = self._on_sfx
 
-        # Gameplay tab (placeholder)
-        self.gameplay_placeholder = Label("Coming soon...", size=22, color=(120, 115, 100))
+        self.ui_label = Label("UI Sounds", size=24)
+        self.ui_slider = Slider(width=240, height=42, value=settings.ui_volume, style=6)
+        self.ui_slider.on_change = self._on_ui
 
-        # Credits tab (placeholder)
-        self.credits_placeholder = Label("Coming soon...", size=22, color=(120, 115, 100))
+        from core.config.constants import CONTROL_NAMES
+
+        self._control_names = CONTROL_NAMES
+        self.p1_controls_label = Label("Player 1", size=24, color=(255, 100, 100))
+        self.p1_controls_value = Label(settings.p1_controls, size=22)
+        self.p1_left_btn = Button("<", width=46, height=46, font_size=22, variant="secondary")
+        self.p1_left_btn.callback = self._prev_p1_controls
+        self.p1_right_btn = Button(">", width=46, height=46, font_size=22, variant="secondary")
+        self.p1_right_btn.callback = self._next_p1_controls
+
+        self.p2_controls_label = Label("Player 2", size=24, color=(100, 150, 255))
+        self.p2_controls_value = Label(settings.p2_controls, size=22)
+        self.p2_left_btn = Button("<", width=46, height=46, font_size=22, variant="secondary")
+        self.p2_left_btn.callback = self._prev_p2_controls
+        self.p2_right_btn = Button(">", width=46, height=46, font_size=22, variant="secondary")
+        self.p2_right_btn.callback = self._next_p2_controls
+
+        self.controls_error = Label("", size=14, color=(200, 80, 80))
+
+        self._credits = [
+            ("Fall VFX", "pimen", "https://pimen.itch.io/smoke-vfx-1"),
+            (
+                "Characters",
+                "dajeki",
+                "https://dajeki.itch.io/dajekis-8x8-fantasy-character-sprites",
+            ),
+            ("UI Borders", "kenney", "https://kenney-assets.itch.io/fantasy-ui-borders"),
+            ("Font", "yukipixels", "https://yukipixels.itch.io/boldpixels"),
+            (
+                "Portal FX",
+                "sentient-dream",
+                "https://sentient-dream-studio.itch.io/pixel-holy-effects-pack01",
+            ),
+            ("Icons", "hardartcore", "https://hardartcore.itch.io/simple-ui-icons"),
+            ("Key Prompts", "kenney", "https://kenney-assets.itch.io/1-bit-pixel-input-prompts-16"),
+            (
+                "UI Sounds",
+                "ateliermagicae",
+                "https://ateliermagicae.itch.io/pixel-ui-sound-effects",
+            ),
+            ("Music", "tallbeard", "https://tallbeard.itch.io/music-loop-bundle"),
+        ]
+        self._credit_labels = []
+        for what, who, _url in self._credits:
+            what_l = Label(what, size=16, color=(220, 215, 200))
+            who_l = Label(who, size=16, color=(160, 200, 160))
+            self._credit_labels.append((what_l, who_l))
+        self._credit_rects: list[pygame.Rect] = []
+        self._credits_title = Label("Credits", size=22, color=(240, 235, 220))
+        self._credits_hint = Label("Click a name to open link", size=12, color=(90, 85, 75))
 
         self.back_btn = Button("Back", width=240, height=58, font_size=24, variant="secondary")
         self.back_btn.callback = self._on_back
@@ -81,8 +127,8 @@ class Settings(Scene):
     def _build_tab_widgets(self) -> None:
         tab_widgets = {
             0: [self.fullscreen_toggle, self.res_left, self.res_right, self.fps_toggle],
-            1: [self.music_slider, self.sfx_slider],
-            2: [],
+            1: [self.music_slider, self.sfx_slider, self.ui_slider],
+            2: [self.p1_left_btn, self.p1_right_btn, self.p2_left_btn, self.p2_right_btn],
             3: [],
         }
         self._tab_widgets = tab_widgets
@@ -101,7 +147,6 @@ class Settings(Scene):
         self.bg_x = (sw - 680) // 2
         self.bg_y = cy - 300
 
-        # Tab buttons — horizontal row below title
         tab_y = self.bg_y + 110
         tab_total_w = len(TAB_NAMES) * 130
         tab_start_x = cx - tab_total_w // 2
@@ -111,20 +156,23 @@ class Settings(Scene):
             tx = tab_start_x + i * 130
             self.tab_rects.append(pygame.Rect(tx, tab_y, 120, 55))
 
-        # Content area starts below tabs
         content_y = self.bg_y + 200
         label_x = cx - 160
         control_x = cx + 130
 
-        # Screen tab positions
         self.fullscreen_toggle.set_position(control_x, content_y)
         self.res_left.set_position(control_x - 90, content_y + 85)
         self.res_right.set_position(control_x + 90, content_y + 85)
         self.fps_toggle.set_position(control_x, content_y + 170)
 
-        # Audio tab positions
-        self.music_slider.set_position(control_x, content_y + 30)
-        self.sfx_slider.set_position(control_x, content_y + 120)
+        self.music_slider.set_position(control_x, content_y + 10)
+        self.sfx_slider.set_position(control_x, content_y + 90)
+        self.ui_slider.set_position(control_x, content_y + 170)
+
+        self.p1_left_btn.set_position(control_x - 90, content_y + 30)
+        self.p1_right_btn.set_position(control_x + 90, content_y + 30)
+        self.p2_left_btn.set_position(control_x - 90, content_y + 110)
+        self.p2_right_btn.set_position(control_x + 90, content_y + 110)
 
         self.back_btn.set_position(cx, self.bg_y + 555)
 
@@ -169,6 +217,48 @@ class Settings(Scene):
     def _on_sfx(self, value: float) -> None:
         settings.set_sfx_volume(value)
 
+    def _on_ui(self, value: float) -> None:
+        settings.ui_volume = value
+
+    def _cycle_control(self, current: str, direction: int) -> str:
+        idx = self._control_names.index(current)
+        return self._control_names[(idx + direction) % len(self._control_names)]
+
+    def _validate_controls(self) -> bool:
+        if settings.p1_controls == settings.p2_controls:
+            self.controls_error.set_text("Both players can't use the same controls!")
+            return False
+        self.controls_error.set_text("")
+        return True
+
+    def _prev_p1_controls(self) -> None:
+        settings.p1_controls = self._cycle_control(settings.p1_controls, -1)
+        if settings.p1_controls == settings.p2_controls:
+            settings.p1_controls = self._cycle_control(settings.p1_controls, -1)
+        self.p1_controls_value.set_text(settings.p1_controls)
+        self._validate_controls()
+
+    def _next_p1_controls(self) -> None:
+        settings.p1_controls = self._cycle_control(settings.p1_controls, 1)
+        if settings.p1_controls == settings.p2_controls:
+            settings.p1_controls = self._cycle_control(settings.p1_controls, 1)
+        self.p1_controls_value.set_text(settings.p1_controls)
+        self._validate_controls()
+
+    def _prev_p2_controls(self) -> None:
+        settings.p2_controls = self._cycle_control(settings.p2_controls, -1)
+        if settings.p2_controls == settings.p1_controls:
+            settings.p2_controls = self._cycle_control(settings.p2_controls, -1)
+        self.p2_controls_value.set_text(settings.p2_controls)
+        self._validate_controls()
+
+    def _next_p2_controls(self) -> None:
+        settings.p2_controls = self._cycle_control(settings.p2_controls, 1)
+        if settings.p2_controls == settings.p1_controls:
+            settings.p2_controls = self._cycle_control(settings.p2_controls, 1)
+        self.p2_controls_value.set_text(settings.p2_controls)
+        self._validate_controls()
+
     def _on_fps(self, active: bool) -> None:
         settings.show_fps = active
 
@@ -188,13 +278,20 @@ class Settings(Scene):
             self._on_back()
             return
 
-        # Tab clicks
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             for i, rect in enumerate(self.tab_rects):
                 if rect.collidepoint(event.pos):
                     self.active_tab = i
                     self._update_active_widgets()
                     return
+
+            if self.active_tab == 3:
+                for i, rect in enumerate(self._credit_rects):
+                    if rect.collidepoint(event.pos) and i < len(self._credits):
+                        import webbrowser
+
+                        webbrowser.open(self._credits[i][2])
+                        return
 
         for widget in self.widgets:
             widget.handle_event(event)
@@ -203,7 +300,6 @@ class Settings(Scene):
         for i, rect in enumerate(self.tab_rects):
             is_active = i == self.active_tab
 
-            # Tab background
             color = (60, 55, 48) if is_active else (35, 32, 28)
             border = (160, 155, 140) if is_active else (80, 75, 65)
             tab_panel = Panel(
@@ -211,13 +307,11 @@ class Settings(Scene):
             )
             tab_panel.draw(surface, rect.x, rect.y)
 
-            # Icon
             icon = self.tab_icons[i]
             icon_x = rect.centerx - TAB_ICON_SIZE // 2
             icon_y = rect.y + 5
             surface.blit(icon, (icon_x, icon_y))
 
-            # Label
             self.tab_labels[i].draw(surface, rect.centerx, rect.bottom - 8)
 
     def _draw_screen_tab(self, surface: pygame.Surface) -> None:
@@ -234,18 +328,45 @@ class Settings(Scene):
         self.fps_toggle.draw(surface)
 
     def _draw_audio_tab(self, surface: pygame.Surface) -> None:
-        y = self._content_y + 30
+        y = self._content_y + 10
         self.music_label.draw(surface, self._label_x, y)
         self.music_slider.draw(surface)
 
-        self.sfx_label.draw(surface, self._label_x, y + 90)
+        self.sfx_label.draw(surface, self._label_x, y + 80)
         self.sfx_slider.draw(surface)
 
+        self.ui_label.draw(surface, self._label_x, y + 160)
+        self.ui_slider.draw(surface)
+
     def _draw_gameplay_tab(self, surface: pygame.Surface, cx: int, cy: int) -> None:
-        self.gameplay_placeholder.draw(surface, cx, cy)
+        y = self._content_y + 30
+        self.p1_controls_label.draw(surface, self._label_x, y)
+        self.p1_left_btn.draw(surface)
+        self.p1_controls_value.draw(surface, self._control_x, y)
+        self.p1_right_btn.draw(surface)
+
+        y += 80
+        self.p2_controls_label.draw(surface, self._label_x, y)
+        self.p2_left_btn.draw(surface)
+        self.p2_controls_value.draw(surface, self._control_x, y)
+        self.p2_right_btn.draw(surface)
+
+        self.controls_error.draw(surface, cx, y + 60)
 
     def _draw_credits_tab(self, surface: pygame.Surface, cx: int, cy: int) -> None:
-        self.credits_placeholder.draw(surface, cx, cy)
+        y = self._content_y + 5
+        self._credits_title.draw(surface, cx, y)
+        y += 35
+        self._credit_rects.clear()
+        for what_label, who_label in self._credit_labels:
+            what_label.draw(surface, cx - 90, y)
+            who_label.draw(surface, cx + 90, y)
+            who_rect = pygame.Rect(
+                cx + 90 - who_label.rect.width // 2, y - 10, who_label.rect.width, 20
+            )
+            self._credit_rects.append(who_rect)
+            y += 26
+        self._credits_hint.draw(surface, cx, y + 10)
 
     def draw(self, surface: pygame.Surface) -> None:
         sw, sh = surface.get_size()

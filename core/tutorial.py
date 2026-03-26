@@ -4,6 +4,7 @@ import math
 
 import pygame
 
+from core.config.constants import BG_COLOR
 from core.gui import Label
 from core.resource import resource_path
 
@@ -21,10 +22,19 @@ KEY_TILES: dict[str, list[int]] = {
     "1": [323],
     "2": [324],
     "3": [325],
+    "UP": [166],
+    "DOWN": [168],
+    "RIGHT": [167],
+    "LEFT": [169],
     "SPACE": [507, 508, 509],
 }
 
-P2_KEY_MAP: dict[str, str] = {"W": "5", "A": "1", "S": "2", "D": "3"}
+# Maps WASD action names to each control set's display keys
+CONTROL_KEY_MAP: dict[str, dict[str, str]] = {
+    "WASD": {"W": "W", "A": "A", "S": "S", "D": "D"},
+    "Numpad": {"W": "5", "A": "1", "S": "2", "D": "3"},
+    "Arrows": {"W": "UP", "A": "LEFT", "S": "DOWN", "D": "RIGHT"},
+}
 
 FADE_SPEED = 4.0
 PULSE_SPEED = 2.5
@@ -49,13 +59,19 @@ def _load_key_image(tile_indices: list[int]) -> pygame.Surface:
 class TutorialStep:
     def __init__(self, p1_keys: list[str], text: str, action: str) -> None:
         self.text = text
-        self.action = action  # what to detect: "move", "jump", "double_jump", "fast_fall", "swim"
+        self.action = action
+        self._base_keys = p1_keys  # stored as WASD names
 
-        self.p1_images = [
-            _load_key_image(KEY_TILES[k.upper()]) for k in p1_keys if k.upper() in KEY_TILES
-        ]
-        p2_keys = [P2_KEY_MAP.get(k.upper(), k.upper()) for k in p1_keys]
-        self.p2_images = [_load_key_image(KEY_TILES[k]) for k in p2_keys if k in KEY_TILES]
+        from core.config.game_settings import settings
+
+        p1_map = CONTROL_KEY_MAP.get(settings.p1_controls, CONTROL_KEY_MAP["WASD"])
+        p2_map = CONTROL_KEY_MAP.get(settings.p2_controls, CONTROL_KEY_MAP["Numpad"])
+
+        p1_mapped = [p1_map.get(k.upper(), k.upper()) for k in p1_keys]
+        p2_mapped = [p2_map.get(k.upper(), k.upper()) for k in p1_keys]
+
+        self.p1_images = [_load_key_image(KEY_TILES[k]) for k in p1_mapped if k in KEY_TILES]
+        self.p2_images = [_load_key_image(KEY_TILES[k]) for k in p2_mapped if k in KEY_TILES]
 
         self.label = Label(text, size=18, color=(220, 215, 200))
 
@@ -83,6 +99,9 @@ class PlayerTutorial:
     def complete_current(self) -> None:
         if not self.is_completing and self.current:
             self._complete_timer = 0.0
+            from core.audio import play_ui
+
+            play_ui("success")
 
     def update(self, dt: float) -> None:
         self.time += dt
@@ -134,10 +153,8 @@ class PlayerTutorial:
 
         sw, sh = surface.get_size()
 
-        # Pulse animation
         pulse = 1.0 + math.sin(self.time * PULSE_SPEED * math.pi) * PULSE_SCALE
 
-        # Completion effect
         if self.is_completing:
             t = self._complete_timer / COMPLETE_FLASH_DURATION
             pulse = 1.0 + COMPLETE_SCALE_BOOST * (1.0 - t)
@@ -148,21 +165,18 @@ class PlayerTutorial:
         if alpha <= 0:
             return
 
-        # Calculate total size
         total_keys_w = sum(img.get_width() for img in images) + 8 * (len(images) - 1)
         panel_w = max(total_keys_w + 40, step.label.rect.width + 40)
         panel_h = SCALED_SIZE + 40
 
-        # Dark backing panel
         panel = pygame.Surface((int(panel_w * pulse), int(panel_h * pulse)), pygame.SRCALPHA)
-        panel.fill((14, 7, 27, 180))
+        panel.fill((*BG_COLOR, 180))
         pygame.draw.rect(panel, (80, 75, 65, 120), panel.get_rect(), 2, border_radius=6)
 
         panel_rect = panel.get_rect(center=(cx, cy))
         panel.set_alpha(alpha)
         surface.blit(panel, panel_rect)
 
-        # Keys
         temp = pygame.Surface((sw, sh), pygame.SRCALPHA)
         kx = cx - total_keys_w // 2
         ky = cy - SCALED_SIZE // 2
@@ -175,7 +189,6 @@ class PlayerTutorial:
                 center=(int(kx + img.get_width() // 2), int(ky + SCALED_SIZE // 2))
             )
 
-            # Green tint on completion
             if self.is_completing:
                 tint = pygame.Surface(scaled_img.get_size(), pygame.SRCALPHA)
                 tint.fill(
@@ -192,14 +205,12 @@ class PlayerTutorial:
             temp.blit(scaled_img, img_rect)
             kx += img.get_width() + 8
 
-        # Text below
         step.label.draw(temp, int(cx), int(cy + SCALED_SIZE // 2 + 14))
 
         temp.set_alpha(alpha)
         surface.blit(temp, (0, 0))
 
 
-# Action detection
 def detect_action(player: object, action: str) -> bool:
     if action == "move":
         return abs(player.velocity.x) > 10

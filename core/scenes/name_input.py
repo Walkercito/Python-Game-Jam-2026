@@ -1,10 +1,9 @@
 import pygame
 
+from core.config.constants import BG_COLOR
 from core.config.game_settings import settings
 from core.gui import Button, Divider, Label, TextInput
 from core.scene import Scene, SceneManager
-
-BG_COLOR = (14, 7, 27)
 
 
 class LocalNameInput(Scene):
@@ -44,11 +43,11 @@ class LocalNameInput(Scene):
         self._layout(width, height)
 
     def _on_play(self) -> None:
-        from core.scenes.gameplay import Gameplay
+        from core.scenes.intro import Intro
 
         p1_name = self.p1_input.text.strip() or "Green"
         p2_name = self.p2_input.text.strip() or "Orange"
-        self.manager.replace(Gameplay(self.manager, p1_name=p1_name, p2_name=p2_name))
+        self.manager.replace(Intro(self.manager, p1_name=p1_name, p2_name=p2_name))
 
     def _on_back(self) -> None:
         self.manager.pop()
