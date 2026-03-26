@@ -1,16 +1,36 @@
 import pygame
 
-from core.config.constants import TITLE
+from core.config.constants import (
+    BASE_MAP_SCALE,
+    BG_COLOR,
+    P1_OUTLINE_LOCAL,
+    P2_OUTLINE_LOCAL,
+    PLAYER_SCALE,
+    TITLE,
+)
 from core.config.game_settings import settings
 from core.gui import Button, Divider, Label
+from core.menu_bots import AIPlayer, MenuBackground
 from core.scene import Scene, SceneManager
-
-BG_COLOR = (14, 7, 27)
 
 
 class MainMenu(Scene):
     def __init__(self, manager: SceneManager) -> None:
         super().__init__(manager)
+
+        from core.audio import play_music
+
+        play_music("menu")
+
+        from importlib.metadata import version as pkg_version
+
+        try:
+            ver = pkg_version("python-game-jam-2026")
+        except Exception:
+            ver = "0.1.1"
+
+        self.version_label = Label(f"v{ver}", size=14, color=(100, 95, 85))
+        self.credit_label = Label("Made with <3 by Walkercito", size=14, color=(100, 95, 85))
 
         self.title = Label(TITLE, size=64)
         self.title_div_l = Divider(scale=1.2, style=3, fade=True)
@@ -54,7 +74,29 @@ class MainMenu(Scene):
             self.settings_btn,
             self.quit_btn,
         ]
+
+        self.bg = MenuBackground(settings.screen_size)
+        self._init_bots()
+        self._overlay: pygame.Surface | None = None
         self._layout(*settings.screen_size)
+
+    def _init_bots(self) -> None:
+        bounds = self.bg.get_bounds()
+        player_scale = PLAYER_SCALE * (self.bg.scale / BASE_MAP_SCALE)
+
+        spawn_a = self.bg.get_spawn("A")
+        spawn_b = self.bg.get_spawn("B")
+        x1 = spawn_a[0] if spawn_a else bounds.left + bounds.width // 3
+        y1 = spawn_a[1] if spawn_a else bounds.top + 20
+        x2 = spawn_b[0] if spawn_b else bounds.left + bounds.width * 2 // 3
+        y2 = spawn_b[1] if spawn_b else bounds.top + 20
+
+        self.bots = [
+            AIPlayer(x1, y1, P1_OUTLINE_LOCAL, "green"),
+            AIPlayer(x2, y2, P2_OUTLINE_LOCAL, "orange"),
+        ]
+        for bot in self.bots:
+            bot.rescale(player_scale)
 
     def _layout(self, sw: int, sh: int) -> None:
         cx = sw // 2
@@ -67,7 +109,34 @@ class MainMenu(Scene):
         self.quit_btn.set_position(cx, cy + 270)
 
     def on_resize(self, width: int, height: int) -> None:
+        old_scale = self.bg.scale
+        old_offset = self.bg.offset
+        self.bg.rescale((width, height))
+        player_scale = PLAYER_SCALE * (self.bg.scale / BASE_MAP_SCALE)
+
+        for bot in self.bots:
+            rel_x = (bot.pos.x - old_offset[0]) / old_scale
+            rel_y = (bot.pos.y - old_offset[1]) / old_scale
+            bot.rescale(player_scale)
+            bot.pos.x = rel_x * self.bg.scale + self.bg.offset[0]
+            bot.pos.y = rel_y * self.bg.scale + self.bg.offset[1]
+            bot.rect.x = int(bot.pos.x)
+            bot.rect.y = int(bot.pos.y)
+
+        self._overlay = None
         self._layout(width, height)
+
+    def update(self, dt: float) -> None:
+        bounds = self.bg.get_bounds()
+        spawns = [self.bg.get_spawn("A"), self.bg.get_spawn("B")]
+        for i, bot in enumerate(self.bots):
+            bot.update_ai(dt, bounds)
+            bot.update(dt, self.bg.collision_rects, [])
+            if bot.dead or bot.rect.top > bounds.bottom + 50:
+                sp = spawns[i]
+                sx = sp[0] if sp else bounds.left + bounds.width // 3 * (i + 1)
+                sy = sp[1] if sp else bounds.top + 20
+                bot.respawn(sx, sy)
 
     def _on_local(self) -> None:
         from core.scenes.name_input import LocalNameInput
@@ -98,10 +167,22 @@ class MainMenu(Scene):
 
     def draw(self, surface: pygame.Surface) -> None:
         surface.fill(BG_COLOR)
-        sw, _sh = surface.get_size()
+        sw, sh = surface.get_size()
         cx = sw // 2
-        cy = _sh // 2
+        cy = sh // 2
 
+        # Map background + AI players
+        self.bg.draw(surface)
+        for bot in self.bots:
+            bot.draw(surface)
+
+        # Dark overlay so UI stays readable
+        if self._overlay is None or self._overlay.get_size() != (sw, sh):
+            self._overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            self._overlay.fill((*BG_COLOR, 120))
+        surface.blit(self._overlay, (0, 0))
+
+        # UI
         title_y = cy - 200
         gap = self.title_w // 2 + 130
         self.title_div_l.draw(surface, cx - gap, title_y)
@@ -119,3 +200,6 @@ class MainMenu(Scene):
 
         self.settings_btn.draw(surface)
         self.quit_btn.draw(surface)
+
+        self.credit_label.draw(surface, 120, sh - 16)
+        self.version_label.draw(surface, sw - 40, sh - 16)

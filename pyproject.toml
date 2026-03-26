@@ -1,6 +1,6 @@
 [project]
 name = "python-game-jam-2026"
-version = "0.1.0"
+version = "0.1.1"
 description = "Co-op platformer with dynamic split-screen, built with pygame-ce for Python Game Jam 2026"
 readme = "README.md"
 requires-python = ">=3.12"
